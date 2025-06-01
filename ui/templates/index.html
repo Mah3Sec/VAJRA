@@ -1,0 +1,1994 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>VAJRA — Vulnerability Analysis, Judgement & Reporting Arsenal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  /* Base surfaces — near-black, layered */
+  --bg:#09090b;
+  --s1:#0e0e11;
+  --s2:#141417;
+  --s3:#1a1a1e;
+  --s4:#222228;
+
+  /* Borders — subtle whites */
+  --b1:rgba(255,255,255,.06);
+  --b2:rgba(255,255,255,.09);
+  --b3:rgba(255,255,255,.14);
+  --b4:rgba(255,255,255,.22);
+
+  /* Accent — violet-indigo, premium */
+  --accent:#7c6af7;
+  --accent-d:#6957e8;
+  --accent-glow:rgba(124,106,247,.18);
+  --accent-soft:rgba(124,106,247,.08);
+
+  /* Severity */
+  --crit:#f87171;
+  --high:#fb923c;
+  --med:#fbbf24;
+  --low:#a3e635;
+  --info:#38bdf8;
+  --success:#4ade80;
+  --warn:#fbbf24;
+
+  /* Text */
+  --t1:#fafafa;
+  --t2:#a1a1aa;
+  --t3:#52525b;
+  --t4:#3f3f46;
+
+  /* Layout */
+  --sw:236px;
+  --th:54px;
+
+  /* Fonts */
+  --sans:'Geist',system-ui,sans-serif;
+  --mono:'Geist Mono','JetBrains Mono',monospace;
+}
+
+*{box-sizing:border-box;margin:0;padding:0;}
+body{
+  background:#09090b;color:var(--t1);
+  font-family:var(--sans);font-size:13.5px;
+  min-height:100vh;overflow-x:hidden;
+  -webkit-font-smoothing:antialiased;
+  position:relative;
+}
+/* clean black + subtle deep purple gradient — no grid lines */
+body::before{
+  content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:
+    radial-gradient(ellipse 60% 40% at 50% 0%, rgba(76,29,149,.18) 0%, transparent 60%),
+    radial-gradient(ellipse 40% 30% at 100% 100%, rgba(124,106,247,.06) 0%, transparent 50%);
+}
+/* ensure layout sits above pseudo elements */
+.layout{position:relative;z-index:1;}
+
+/* ─── LAYOUT ─── */
+.layout{display:grid;grid-template-columns:var(--sw) 1fr;grid-template-rows:var(--th) 1fr;min-height:100vh;}
+
+/* ─── TOPBAR ─── */
+.topbar{
+  grid-column:1/-1;
+  background:var(--s1);
+  border-bottom:1px solid var(--b2);
+  display:flex;align-items:center;
+  padding:0 20px 0 0;
+  position:sticky;top:0;z-index:200;
+  box-shadow:0 1px 0 rgba(255,255,255,.04);
+}
+
+.brand{
+  width:var(--sw);flex-shrink:0;
+  display:flex;align-items:center;gap:10px;
+  padding:0 18px;height:100%;
+  border-right:1px solid var(--b1);
+}
+.brand-icon{
+  width:28px;height:28px;background:var(--accent);border-radius:7px;
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 0 0 1px rgba(124,106,247,.4),0 2px 12px rgba(124,106,247,.25);
+  flex-shrink:0;
+}
+.brand-icon svg{width:13px;height:13px;stroke:#fff;fill:none;stroke-width:2.3;stroke-linecap:round;stroke-linejoin:round;}
+.brand-name{font-size:15px;font-weight:700;color:var(--t1);letter-spacing:.05em;}
+.brand-v{font-size:10px;color:var(--t3);font-family:var(--mono);background:var(--s3);border:1px solid var(--b2);border-radius:4px;padding:1px 6px;margin-left:6px;}
+
+.topbar-mid{flex:1;padding:0 18px;}
+
+.topbar-right{display:flex;align-items:center;gap:8px;}
+
+.chip{
+  display:flex;align-items:center;gap:6px;
+  background:var(--s2);border:1px solid var(--b2);
+  border-radius:6px;padding:5px 13px;
+  font-size:11.5px;color:var(--t2);font-family:var(--mono);
+  letter-spacing:.02em;white-space:nowrap;
+}
+.dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;}
+.dot-ok{background:var(--success);box-shadow:0 0 8px var(--success);}
+.dot-err{background:var(--crit);box-shadow:0 0 8px var(--crit);}
+.dot-warn{background:var(--warn);box-shadow:0 0 8px var(--warn);}
+#topModelBadge{
+  background:var(--s2);border:1px solid var(--b2);
+  border-radius:6px;padding:5px 11px;
+  font-size:11px;color:var(--t2);font-family:var(--mono);
+}
+
+/* ─── SIDEBAR ─── */
+.sidebar{
+  background:var(--s1);border-right:1px solid var(--b1);
+  display:flex;flex-direction:column;
+  position:sticky;top:var(--th);height:calc(100vh - var(--th));
+  overflow-y:auto;
+}
+
+.nav-group{padding:20px 0 4px;}
+.nav-label{
+  padding:0 14px 7px;
+  font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--t4);font-weight:600;font-family:var(--mono);
+}
+.nav-item{
+  display:flex;align-items:center;gap:9px;
+  padding:9px 14px;cursor:pointer;
+  color:var(--t2);font-size:13px;font-weight:400;
+  border-left:2px solid transparent;
+  transition:color .12s,background .12s;user-select:none;
+  margin:1px 0;
+}
+.nav-item:hover{color:var(--t1);background:var(--s2);}
+.nav-item.active{
+  color:var(--t1);background:var(--accent-soft);
+  border-left-color:var(--accent);font-weight:500;
+}
+.nav-icon{width:15px;height:15px;flex-shrink:0;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;opacity:.75;}
+.nav-item.active .nav-icon,.nav-item:hover .nav-icon{opacity:1;}
+
+.sidebar-footer{
+  margin-top:auto;padding:13px 14px;
+  border-top:1px solid var(--b1);
+  font-size:10.5px;color:var(--t3);line-height:1.9;
+  font-family:var(--mono);
+}
+
+/* ─── CONTENT ─── */
+.content{overflow-y:auto;height:calc(100vh - var(--th));}
+
+/* ─── PANELS ─── */
+.panel{display:none;padding:28px 30px;animation:up .15s ease;}
+.panel.active{display:block;}
+@keyframes up{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+
+.pg-header{margin-bottom:22px;padding-bottom:16px;border-bottom:1px solid var(--b1);}
+.pg-title{font-size:16px;font-weight:700;color:var(--t1);letter-spacing:-.02em;}
+.pg-sub{font-size:12.5px;color:var(--t3);margin-top:3px;}
+
+/* ─── CARDS ─── */
+.card{
+  background:var(--s2);border:1px solid var(--b1);
+  border-radius:10px;padding:18px 20px;margin-bottom:14px;
+}
+.card-label{
+  font-size:10.5px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--t3);margin-bottom:14px;font-family:var(--mono);
+}
+
+/* ─── REPORT TYPE TABS ─── */
+.rtypes{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:18px;}
+.rtype{
+  border:1px solid var(--b2);border-radius:9px;padding:20px 14px;
+  cursor:pointer;text-align:center;transition:all .15s;background:var(--s2);
+  position:relative;overflow:hidden;
+}
+.rtype::before{
+  content:"";position:absolute;top:0;left:0;right:0;height:2px;
+  opacity:0;transition:opacity .15s;
+}
+.rtype:hover{border-color:var(--b3);background:var(--s3);}
+.rtype:hover::before{opacity:.5;}
+.rtype.sel::before{opacity:1;}
+
+/* Pentest — blue */
+.rtype.rtype-pentest::before{background:linear-gradient(90deg,transparent,#3b82f6,transparent);}
+.rtype.rtype-pentest:hover,.rtype.rtype-pentest.sel{border-color:rgba(59,130,246,.5);}
+.rtype.rtype-pentest.sel{background:rgba(59,130,246,.07);box-shadow:0 0 0 1px rgba(59,130,246,.3) inset;}
+.rtype.rtype-pentest .rtype-icon{background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.2);}
+.rtype.rtype-pentest .rtype-icon svg{stroke:#1d4ed8;opacity:.7;}
+.rtype.rtype-pentest:hover .rtype-icon svg,.rtype.rtype-pentest.sel .rtype-icon svg{stroke:#60a5fa;opacity:1;}
+.rtype.rtype-pentest.sel .rtype-name,.rtype.rtype-pentest:hover .rtype-name{color:#60a5fa;}
+
+/* Red Team — red */
+.rtype.rtype-redteam::before{background:linear-gradient(90deg,transparent,#ef4444,transparent);}
+.rtype.rtype-redteam:hover,.rtype.rtype-redteam.sel{border-color:rgba(239,68,68,.45);}
+.rtype.rtype-redteam.sel{background:rgba(239,68,68,.06);box-shadow:0 0 0 1px rgba(239,68,68,.25) inset;}
+.rtype.rtype-redteam .rtype-icon{background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.18);}
+.rtype.rtype-redteam .rtype-icon svg{stroke:#b91c1c;opacity:.7;}
+.rtype.rtype-redteam:hover .rtype-icon svg,.rtype.rtype-redteam.sel .rtype-icon svg{stroke:#f87171;opacity:1;}
+.rtype.rtype-redteam.sel .rtype-name,.rtype.rtype-redteam:hover .rtype-name{color:#f87171;}
+
+/* Phishing — amber */
+.rtype.rtype-phishing::before{background:linear-gradient(90deg,transparent,#f59e0b,transparent);}
+.rtype.rtype-phishing:hover,.rtype.rtype-phishing.sel{border-color:rgba(245,158,11,.4);}
+.rtype.rtype-phishing.sel{background:rgba(245,158,11,.06);box-shadow:0 0 0 1px rgba(245,158,11,.22) inset;}
+.rtype.rtype-phishing .rtype-icon{background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.18);}
+.rtype.rtype-phishing .rtype-icon svg{stroke:#92400e;opacity:.7;}
+.rtype.rtype-phishing:hover .rtype-icon svg,.rtype.rtype-phishing.sel .rtype-icon svg{stroke:#fbbf24;opacity:1;}
+.rtype.rtype-phishing.sel .rtype-name,.rtype.rtype-phishing:hover .rtype-name{color:#fbbf24;}
+
+.rtype-icon{
+  width:52px;height:52px;border-radius:12px;
+  display:flex;align-items:center;justify-content:center;
+  margin:0 auto 12px;transition:all .18s;
+}
+.rtype-icon svg{transition:stroke .18s,opacity .18s;}
+.rtype-name{font-size:11.5px;font-weight:700;letter-spacing:.08em;color:var(--t1);font-family:var(--mono);transition:color .15s;}
+.rtype-desc{font-size:11px;color:var(--t3);margin-top:3px;}
+
+/* ─── FORMS ─── */
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.form-group{display:flex;flex-direction:column;gap:5px;}
+.form-group.full{grid-column:1/-1;}
+
+label{font-size:12px;font-weight:500;color:var(--t2);letter-spacing:.01em;}
+
+input,select,textarea{
+  background:var(--s3);border:1px solid var(--b2);color:var(--t1);
+  padding:8px 12px;border-radius:7px;
+  font-family:var(--sans);font-size:13.5px;width:100%;
+  transition:border-color .13s,box-shadow .13s;
+}
+input:focus,select:focus,textarea:focus{
+  outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-glow);
+}
+input::placeholder,textarea::placeholder{color:var(--t3);}
+textarea{resize:vertical;min-height:100px;line-height:1.6;}
+select option{background:var(--s2);}
+input[type=date]{color-scheme:dark;}
+
+.assessor-combined{
+  grid-column:1/-1;background:var(--s3);border:1px solid var(--b2);
+  border-radius:7px;padding:8px 12px;font-size:13.5px;color:var(--t2);
+  min-height:38px;display:flex;align-items:center;
+}
+
+/* ─── LOGO SLOTS ─── */
+.logo-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;}
+.logo-slot{
+  border:1px dashed var(--b3);border-radius:8px;padding:14px;
+  text-align:center;cursor:pointer;transition:all .15s;background:var(--s3);
+  position:relative;min-height:76px;display:flex;align-items:center;justify-content:center;flex-direction:column;
+}
+.logo-slot:hover{border-color:var(--accent);background:var(--accent-soft);}
+.logo-slot.has-logo{border-color:var(--success);border-style:solid;}
+.logo-slot img{max-height:46px;max-width:140px;object-fit:contain;}
+.logo-slot-lbl{font-size:10px;letter-spacing:.08em;color:var(--t3);text-transform:uppercase;margin-top:5px;font-weight:600;font-family:var(--mono);}
+.logo-slot-hint{font-size:10px;color:var(--t3);margin-top:2px;}
+.logo-x{position:absolute;top:6px;right:8px;font-size:13px;color:var(--t3);cursor:pointer;z-index:2;line-height:1;}
+.logo-x:hover{color:var(--crit);}
+
+/* ─── INPUT METHOD TABS ─── */
+.imethods{
+  display:flex;gap:2px;background:var(--s3);
+  border:1px solid var(--b2);border-radius:7px;padding:3px;margin-bottom:12px;
+}
+.imethod{
+  flex:1;padding:7px 4px;text-align:center;cursor:pointer;
+  font-size:11.5px;color:var(--t3);transition:all .13s;border-radius:5px;font-weight:500;
+}
+.imethod:hover{color:var(--t2);background:var(--s4);}
+.imethod.active{color:var(--t1);background:var(--s4);box-shadow:0 1px 3px rgba(0,0,0,.3);}
+.ipanel{display:none;}
+.ipanel.active{display:block;}
+
+/* ─── BUTTONS ─── */
+.btn{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:7px 15px;border:none;border-radius:7px;cursor:pointer;
+  font-family:var(--sans);font-size:13px;font-weight:500;
+  transition:all .13s;letter-spacing:.01em;
+}
+.btn-primary{
+  background:var(--accent);color:#fff;
+  box-shadow:0 0 0 1px rgba(124,106,247,.3),0 2px 8px rgba(124,106,247,.2);
+}
+.btn-primary:hover{background:var(--accent-d);box-shadow:0 0 0 1px rgba(124,106,247,.5),0 4px 16px rgba(124,106,247,.3);}
+.btn-primary:disabled{opacity:.35;cursor:not-allowed;box-shadow:none;}
+.btn-ghost{background:var(--s3);color:var(--t2);border:1px solid var(--b2);}
+.btn-ghost:hover{background:var(--s4);color:var(--t1);border-color:var(--b3);}
+.btn-danger{background:transparent;color:var(--crit);border:1px solid rgba(248,113,113,.2);}
+.btn-danger:hover{background:rgba(248,113,113,.07);}
+.btn-sm{padding:5px 11px;font-size:12px;}
+.btn-xs{padding:3px 9px;font-size:11px;}
+
+/* ─── ALERTS ─── */
+.alert{padding:10px 13px;border-radius:7px;font-size:13px;margin-bottom:12px;line-height:1.6;border-left:3px solid;}
+.alert-error{background:rgba(248,113,113,.07);border-color:var(--crit);color:var(--crit);}
+.alert-success{background:rgba(74,222,128,.07);border-color:var(--success);color:var(--success);}
+.alert-warn{background:rgba(251,191,36,.07);border-color:var(--warn);color:var(--warn);}
+.alert-info{background:rgba(56,189,248,.07);border-color:var(--info);color:var(--info);}
+
+/* ─── LOADING ─── */
+.loading{
+  display:none;position:fixed;inset:0;
+  background:rgba(9,9,11,.93);z-index:9000;
+  align-items:center;justify-content:center;flex-direction:column;gap:0;
+  backdrop-filter:blur(12px);
+}
+.loading.on{display:flex;}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* VAJRA loader animation */
+@keyframes vl-cw    { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+@keyframes vl-ccw   { from{transform:rotate(0deg)} to{transform:rotate(-360deg)} }
+@keyframes vl-float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-10px)} }
+@keyframes vl-glow  { 0%,100%{filter:drop-shadow(0 0 8px rgba(124,106,247,.6))} 50%{filter:drop-shadow(0 0 24px rgba(124,106,247,1))} }
+@keyframes vl-o1    { from{transform:rotate(0deg) translateX(72px) rotate(0deg)} to{transform:rotate(360deg) translateX(72px) rotate(-360deg)} }
+@keyframes vl-o2    { from{transform:rotate(120deg) translateX(72px) rotate(-120deg)} to{transform:rotate(480deg) translateX(72px) rotate(-480deg)} }
+@keyframes vl-o3    { from{transform:rotate(240deg) translateX(72px) rotate(-240deg)} to{transform:rotate(600deg) translateX(72px) rotate(-600deg)} }
+@keyframes vl-dot   { 0%,100%{opacity:.5} 50%{opacity:1} }
+@keyframes vl-scan  { 0%{transform:translateY(-80px);opacity:0} 10%{opacity:.5} 90%{opacity:.5} 100%{transform:translateY(80px);opacity:0} }
+@keyframes vl-pulse { 0%,100%{transform:scale(1);opacity:.3} 50%{transform:scale(1.08);opacity:.12} }
+@keyframes vl-txt   { 0%,100%{opacity:.4} 50%{opacity:1} }
+
+.vl-scene{
+  position:relative;width:200px;height:200px;
+  display:flex;align-items:center;justify-content:center;
+  animation:vl-float 3s ease-in-out infinite;
+  margin-bottom:28px;
+}
+.vl-ring1{position:absolute;inset:0;animation:vl-cw 12s linear infinite;}
+.vl-ring2{position:absolute;inset:20px;animation:vl-ccw 8s linear infinite;}
+.vl-ring3{position:absolute;inset:40px;animation:vl-cw 5s linear infinite;}
+.vl-o{position:absolute;top:50%;left:50%;border-radius:50%;}
+.vl-o1{width:10px;height:10px;margin:-5px;background:#7c6af7;box-shadow:0 0 10px #7c6af7;animation:vl-o1 5s linear infinite;}
+.vl-o2{width:8px;height:8px;margin:-4px;background:#a78bfa;box-shadow:0 0 8px #a78bfa;opacity:.75;animation:vl-o2 5s linear infinite;}
+.vl-o3{width:6px;height:6px;margin:-3px;background:#60a5fa;box-shadow:0 0 6px #60a5fa;opacity:.6;animation:vl-o3 5s linear infinite;}
+.vl-hex{animation:vl-glow 2s ease-in-out infinite;position:relative;z-index:1;}
+.vl-scan{position:absolute;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,rgba(124,106,247,.6),transparent);animation:vl-scan 2.5s ease-in-out infinite;pointer-events:none;}
+.vl-halo{position:absolute;inset:-20px;border-radius:50%;border:1px solid rgba(124,106,247,.15);animation:vl-pulse 3s ease-in-out infinite;}
+
+.loader-msg{color:var(--t1);font-size:15px;font-weight:700;letter-spacing:.14em;font-family:var(--mono);text-align:center;margin-bottom:8px;animation:vl-txt 2s ease-in-out infinite;}
+.loader-sub{color:var(--t3);font-size:12px;margin-top:0;font-family:var(--mono);letter-spacing:.07em;text-align:center;}
+.loader-dots{display:flex;gap:6px;justify-content:center;margin-top:14px;}
+.loader-dots span{width:5px;height:5px;border-radius:50%;background:var(--accent);}
+.loader-dots span:nth-child(1){animation:vl-dot 1.2s ease-in-out infinite 0s;}
+.loader-dots span:nth-child(2){animation:vl-dot 1.2s ease-in-out infinite .2s;}
+.loader-dots span:nth-child(3){animation:vl-dot 1.2s ease-in-out infinite .4s;}
+.loader-dots span:nth-child(4){animation:vl-dot 1.2s ease-in-out infinite .6s;}
+.loader-dots span:nth-child(5){animation:vl-dot 1.2s ease-in-out infinite .8s;}
+
+/* ─── REPORT CARDS ─── */
+.rcard{
+  background:var(--s2);border:1px solid var(--b1);border-radius:9px;
+  padding:12px 16px;display:flex;align-items:center;gap:12px;
+  margin-bottom:7px;transition:border-color .13s;
+}
+.rcard:hover{border-color:var(--b2);}
+.rcard-info{flex:1;min-width:0;}
+.rcard-title{font-size:13.5px;font-weight:600;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--t1);}
+.rcard-meta{font-size:11.5px;color:var(--t3);font-family:var(--mono);}
+.rcard-actions{display:flex;gap:6px;flex-shrink:0;}
+
+.badge{padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;font-family:var(--mono);}
+.badge-pentest{background:rgba(56,189,248,.1);color:var(--info);border:1px solid rgba(56,189,248,.2);}
+.badge-redteam{background:rgba(248,113,113,.1);color:var(--crit);border:1px solid rgba(248,113,113,.2);}
+.badge-phishing{background:rgba(251,191,36,.1);color:var(--med);border:1px solid rgba(251,191,36,.2);}
+
+/* ─── VIEWER / MARKDOWN ─── */
+.viewer{background:var(--s2);border:1px solid var(--b1);border-radius:10px;padding:22px;margin-top:14px;}
+.viewer pre{white-space:pre-wrap;word-wrap:break-word;font-size:12px;line-height:1.85;color:var(--t2);font-family:var(--mono);}
+.md h1{font-size:17px;font-weight:700;margin:18px 0 10px;color:var(--crit);border-bottom:1px solid var(--b1);padding-bottom:6px;}
+.md h2{font-size:14.5px;font-weight:700;margin:14px 0 8px;color:var(--accent);}
+.md h3{font-size:13.5px;font-weight:600;margin:10px 0 5px;color:var(--t1);}
+.md h4{font-size:13px;font-weight:600;margin:8px 0 4px;color:var(--t2);}
+.md p,.md li{line-height:1.8;margin:4px 0;color:var(--t2);font-size:13px;}
+.md ul,.md ol{margin:6px 0 6px 18px;}
+.md code{background:var(--s3);color:var(--accent);padding:1px 6px;border-radius:4px;font-size:12px;font-family:var(--mono);border:1px solid var(--b2);}
+.md pre{background:var(--s3);border:1px solid var(--b2);border-radius:7px;padding:13px 15px;font-size:12px;overflow-x:auto;margin:8px 0;line-height:1.7;font-family:var(--mono);}
+.md strong{color:var(--t1);}
+.md table{width:100%;border-collapse:collapse;margin:12px 0;font-size:12.5px;}
+.md th{background:var(--s3);padding:8px 12px;border:1px solid var(--b2);color:var(--t2);font-weight:600;font-size:11px;letter-spacing:.06em;text-transform:uppercase;font-family:var(--mono);}
+.md td{padding:8px 12px;border:1px solid var(--b1);color:var(--t2);}
+.md tr:nth-child(even) td{background:rgba(255,255,255,.02);}
+
+/* ─── TYPE-SPECIFIC FIELDS ─── */
+.type-fields{margin-top:14px;border-top:1px solid var(--b1);padding-top:13px;}
+.field-section-label{
+  font-size:10.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--t3);margin-bottom:11px;display:flex;align-items:center;gap:7px;font-family:var(--mono);
+}
+.field-section-label::before{content:"";display:block;width:2px;height:12px;background:var(--accent);border-radius:2px;}
+
+/* ─── MISC ─── */
+.upload-zone{
+  border:1px dashed var(--b3);border-radius:8px;padding:18px;
+  text-align:center;cursor:pointer;color:var(--t3);font-size:13px;
+  transition:all .15s;margin-bottom:12px;
+}
+.upload-zone:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-soft);}
+
+.export-bar{display:flex;gap:8px;align-items:center;margin-top:13px;padding-top:13px;border-top:1px solid var(--b1);flex-wrap:wrap;}
+
+.fcard{background:var(--s3);border:1px solid var(--b1);border-radius:8px;padding:14px;margin-bottom:10px;border-left:3px solid var(--b3);}
+.fcard.sev-critical{border-left-color:var(--crit);}
+.fcard.sev-high{border-left-color:var(--high);}
+.fcard.sev-medium{border-left-color:var(--med);}
+.fcard.sev-low{border-left-color:var(--low);}
+.fcard.sev-info{border-left-color:var(--info);}
+
+.cfg-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;}
+.cfg-item{background:var(--s2);border:1px solid var(--b1);border-radius:8px;padding:13px 14px;}
+.cfg-item .k{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--t3);margin-bottom:5px;font-weight:600;font-family:var(--mono);}
+.cfg-item .v{font-size:13.5px;font-weight:700;color:var(--t1);}
+
+.fitem{display:flex;align-items:center;justify-content:space-between;background:var(--s2);border:1px solid var(--b1);border-radius:6px;padding:8px 12px;font-size:12.5px;margin-bottom:5px;}
+.div{height:1px;background:var(--b1);margin:18px 0;}
+.empty-state{color:var(--t3);font-size:13px;padding:36px 20px;text-align:center;border:1px dashed var(--b2);border-radius:9px;font-family:var(--mono);}
+
+/* scrollbar */
+::-webkit-scrollbar{width:4px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:var(--b3);border-radius:4px;}
+</style>
+</head>
+<body>
+
+<div class="loading" id="loader">
+  <div style="text-align:center;display:flex;flex-direction:column;align-items:center;">
+
+    <!-- Animated VAJRA logo scene -->
+    <div class="vl-scene">
+      <div class="vl-halo"></div>
+      <!-- scan line -->
+      <div class="vl-scan"></div>
+      <!-- rings -->
+      <svg class="vl-ring1" width="200" height="200" viewBox="0 0 200 200" fill="none" style="position:absolute;inset:0;">
+        <circle cx="100" cy="100" r="94" stroke="#7c6af7" stroke-width="1" stroke-dasharray="5 8" opacity=".35"/>
+        <circle cx="100" cy="100" r="86" stroke="#4c1d95" stroke-width=".5" opacity=".2"/>
+      </svg>
+      <svg class="vl-ring2" width="160" height="160" viewBox="0 0 160 160" fill="none" style="position:absolute;top:20px;left:20px;">
+        <circle cx="80" cy="80" r="74" stroke="#a78bfa" stroke-width=".8" stroke-dasharray="3 9" opacity=".25"/>
+      </svg>
+      <svg class="vl-ring3" width="120" height="120" viewBox="0 0 120 120" fill="none" style="position:absolute;top:40px;left:40px;">
+        <circle cx="60" cy="60" r="54" stroke="#7c6af7" stroke-width=".6" stroke-dasharray="2 11" opacity=".18"/>
+      </svg>
+      <!-- orbit dots -->
+      <div class="vl-o vl-o1"></div>
+      <div class="vl-o vl-o2"></div>
+      <div class="vl-o vl-o3"></div>
+      <!-- central hex -->
+      <svg class="vl-hex" width="110" height="110" viewBox="0 0 84 84" fill="none">
+        <defs>
+          <linearGradient id="vlg1" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#1e1b4b"/><stop offset="100%" stop-color="#0f0f1a"/></linearGradient>
+          <linearGradient id="vlg2" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#c4b5fd"/><stop offset="100%" stop-color="#7c3aed"/></linearGradient>
+          <linearGradient id="vlg3" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#a78bfa"/><stop offset="100%" stop-color="#4c1d95"/></linearGradient>
+          <filter id="vlhglow"><feGaussianBlur stdDeviation="4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+        </defs>
+        <g filter="url(#vlhglow)">
+          <polygon points="42,4 78,24 78,60 42,80 6,60 6,24" fill="none" stroke="#7c3aed" stroke-width="1.5" opacity=".5"/>
+          <polygon points="42,9 74,27 74,57 42,75 10,57 10,27" fill="url(#vlg1)" stroke="url(#vlg3)" stroke-width="2"/>
+          <polygon points="42,17 66,31 66,53 42,67 18,53 18,31" fill="none" stroke="#7c3aed" stroke-width=".8" opacity=".4"/>
+          <polygon points="46,22 32,48 40,48 37,62 54,42 45,42" fill="url(#vlg2)"/>
+        </g>
+      </svg>
+    </div>
+
+    <div class="loader-msg" id="loaderMsg">GENERATING REPORT</div>
+    <div class="loader-sub" id="loaderSub">AI is structuring your findings...</div>
+    <div class="loader-dots">
+      <span></span><span></span><span></span><span></span><span></span>
+    </div>
+  </div>
+</div>
+
+<div class="layout">
+
+  <!-- TOPBAR -->
+  <header class="topbar">
+    <div class="brand">
+      <div style="flex-shrink:0;display:flex;align-items:center;">
+        <svg width="46" height="46" viewBox="0 0 84 84" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="vs" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#1e1b4b"/><stop offset="100%" stop-color="#0f0f1a"/></linearGradient>
+            <linearGradient id="vb" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#c4b5fd"/><stop offset="100%" stop-color="#7c3aed"/></linearGradient>
+            <linearGradient id="vk" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#a78bfa"/><stop offset="100%" stop-color="#4c1d95"/></linearGradient>
+          </defs>
+          <polygon points="42,4 78,24 78,60 42,80 6,60 6,24" fill="none" stroke="#7c3aed" stroke-width="1" opacity="0.3"/>
+          <polygon points="42,9 74,27 74,57 42,75 10,57 10,27" fill="url(#vs)" stroke="url(#vk)" stroke-width="1.8"/>
+          <polygon points="42,17 66,31 66,53 42,67 18,53 18,31" fill="none" stroke="#7c3aed" stroke-width="0.7" opacity="0.35"/>
+          <polygon points="46,22 32,48 40,48 37,62 54,42 45,42" fill="url(#vb)"/>
+        </svg>
+      </div>
+      <span class="brand-name">VAJRA</span>
+      <span class="brand-v">v1.4</span>
+    </div>
+    <div class="topbar-mid"></div>
+    <div class="topbar-right">
+      <div class="chip">
+        <span class="dot dot-warn" id="sDot"></span>
+        <span id="sText">Checking...</span>
+      </div>
+      <div id="topModelBadge">—</div>
+    </div>
+  </header>
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <nav>
+      <div class="nav-group">
+        <div class="nav-label">Workspace</div>
+        <div class="nav-item active" onclick="nav('generate',this)">
+          <svg class="nav-icon" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+          New Report
+        </div>
+        <div class="nav-item" onclick="nav('reports',this)" id="navReports">
+          <svg class="nav-icon" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+          Reports
+        </div>
+      </div>
+      <div class="nav-group">
+        <div class="nav-label">Assets</div>
+        <div class="nav-item" onclick="nav('logos',this)">
+          <svg class="nav-icon" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+          Company Logos
+        </div>
+        <div class="nav-item" onclick="nav('templates',this)">
+          <svg class="nav-icon" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          Templates
+        </div>
+        <div class="nav-item" onclick="nav('knowledge',this)">
+          <svg class="nav-icon" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+          Knowledge Base
+        </div>
+      </div>
+      <div class="nav-group">
+        <div class="nav-label">System</div>
+        <div class="nav-item" onclick="nav('config',this)">
+          <svg class="nav-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          Config
+        </div>
+        <div class="nav-item" id="teamNavItem" style="display:none" onclick="nav('team',this)">
+          <svg class="nav-icon" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          Team
+        </div>
+      </div>
+      <div id="userBadge"></div>
+    </nav>
+    <div class="sidebar-footer">
+      <div>LOCAL · OFFLINE · SECURE</div>
+      <div style="margin-top:2px;color:var(--t3);">Model: <span id="modelName" style="color:var(--t2);">—</span></div>
+      <div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--b1);">
+        <div style="font-size:9.5px;color:var(--t3);font-family:var(--mono);margin-bottom:8px;letter-spacing:.04em;">
+          Created by <a href="https://twitter.com/mah3sec" target="_blank" rel="noopener" style="color:var(--accent);text-decoration:none;font-weight:600;" onmouseover="this.style.opacity='.7'" onmouseout="this.style.opacity='1'">Mah3sec</a>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center;">
+          <a href="https://github.com/mah3sec" target="_blank" rel="noopener"
+            style="font-size:10px;color:var(--t3);text-decoration:none;font-family:var(--mono);display:flex;align-items:center;gap:5px;padding:4px 8px;border:1px solid var(--b2);border-radius:5px;transition:all .15s;"
+            onmouseover="this.style.color='#fff';this.style.borderColor='var(--accent)'" onmouseout="this.style.color='var(--t3)';this.style.borderColor='var(--b2)'">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0 1 12 6.844a9.59 9.59 0 0 1 2.504.337c1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.942.359.31.678.921.678 1.856 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.02 10.02 0 0 0 22 12.017C22 6.484 17.522 2 12 2z"/></svg>
+            GitHub
+          </a>
+
+        </div>
+      </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="content">
+
+    <!-- NEW REPORT -->
+    <div class="panel active" id="panel-generate">
+      <div class="pg-header">
+        <div class="pg-title">New Report</div>
+        <div class="pg-sub">AI-structured penetration test report generation</div>
+      </div>
+      <div id="genAlert"></div>
+
+      <div class="rtypes">
+        <div class="rtype rtype-pentest sel" onclick="selType('pentest',this)">
+          <div class="rtype-icon">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/>
+              <path d="M12 22V2"/>
+            </svg>
+          </div>
+          <div class="rtype-name">PENTEST</div>
+          <div class="rtype-desc">Penetration Test</div>
+        </div>
+        <div class="rtype rtype-redteam" onclick="selType('redteam',this)">
+          <div class="rtype-icon">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="14.5 17.5 3 6 3 3 6 3 17.5 14.5"/>
+              <line x1="13" x2="19" y1="19" y2="13"/>
+              <line x1="16" x2="20" y1="16" y2="20"/>
+              <line x1="19" x2="21" y1="21" y2="19"/>
+              <polyline points="14.5 6.5 18 3 21 3 21 6 17.5 9.5"/>
+              <line x1="5" x2="9" y1="14" y2="18"/>
+              <line x1="7" x2="4" y1="17" y2="20"/>
+              <line x1="3" x2="5" y1="19" y2="21"/>
+            </svg>
+          </div>
+          <div class="rtype-name">RED TEAM</div>
+          <div class="rtype-desc">Adversarial Simulation</div>
+        </div>
+        <div class="rtype rtype-phishing" onclick="selType('phishing',this)">
+          <div class="rtype-icon">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M4 6a2 2 0 0 0-2 2v4a5 5 0 0 0 5 5 8 8 0 0 1 5 2 8 8 0 0 1 5-2 5 5 0 0 0 5-5V8a2 2 0 0 0-2-2h-3a8 8 0 0 0-5 2 8 8 0 0 0-5-2z"/>
+              <path d="M18 11c-1.5 0-2.5.5-3 2"/>
+              <path d="M6 11c1.5 0 2.5.5 3 2"/>
+            </svg>
+          </div>
+          <div class="rtype-name">PHISHING</div>
+          <div class="rtype-desc">Campaign Assessment</div>
+        </div>
+      </div>
+
+      <div class="card" id="engagementCard">
+        <div class="card-label" id="engagementCardLabel">Engagement Details</div>
+        <div class="form-grid">
+          <div class="form-group"><label>Client / Organisation</label><input id="fClient" placeholder="ACME Corporation"></div>
+          <div class="form-group"><label>Lead Assessor</label><input id="fTester" placeholder="John Doe" oninput="updateAssessorDisplay()"></div>
+          <div class="form-group"><label>Assessment Team</label><input id="fAssessmentTeam" placeholder="e.g. Offensive Security Team" oninput="updateAssessorDisplay()"></div>
+          <div class="form-group"><label>Report Date</label><input type="date" id="fDate"></div>
+          <div class="form-group"><label>Engagement Reference</label><input id="fEngRef" placeholder="e.g. VAJRA-2026-001"></div>
+          <div class="form-group"><label>Template</label>
+            <select id="fTemplate" onchange="onUserPickTemplate()">
+              <option value="">— Professional default —</option>
+              {% for t in templates %}<option value="{{ t }}">{{ t }}</option>{% endfor %}
+            </select>
+          </div>
+          <div class="form-group"><label>Classification</label>
+            <select id="fClassification">
+              <option value="CONFIDENTIAL — NOT FOR DISTRIBUTION">Confidential — Not for Distribution</option>
+              <option value="RESTRICTED">Restricted</option>
+              <option value="INTERNAL USE ONLY">Internal Use Only</option>
+              <option value="TLP:RED">TLP:RED</option>
+              <option value="TLP:AMBER">TLP:AMBER</option>
+            </select>
+          </div>
+          <div class="form-group"><label>Report Access</label>
+            <select id="fVisibility">
+              <option value="team"> Team — all logged-in users</option>
+              <option value="private">Private — only me &amp; admin</option>
+              <option value="public">Public — everyone incl. viewers</option>
+            </select>
+          </div>
+          <div class="form-group"><label>Report Version</label><input id="fVersion" value="1.0 — Final" placeholder="1.0 — Draft"></div>
+        </div>
+
+        <!-- PENTEST FIELDS -->
+        <div id="fields-pentest" class="type-fields">
+          <div class="field-section-label">Penetration Test Specifics</div>
+          <div class="form-grid">
+            <div class="form-group full"><label>Target System / Application</label><input id="fTargetSystem" placeholder="e.g. Web Authentication Portal (app.example.com)"></div>
+            <div class="form-group full"><label>Scope / In-Scope Targets</label><textarea id="fScope" style="min-height:60px;" placeholder="https://portal.acme.com&#10;192.168.1.0/24&#10;api.acme.com"></textarea></div>
+            <div class="form-group"><label>Tested From</label>
+              <select id="fTestedFrom">
+                <option>External Network</option><option>Internal Network</option>
+                <option>Grey-Box (Authenticated)</option><option>White-Box (Full Knowledge)</option>
+              </select>
+            </div>
+            <div class="form-group"><label>Assessment Type</label>
+              <select id="fAssessType">
+                <option value="Black-Box External Penetration Test">Black-Box External</option>
+                <option value="Grey-Box Penetration Test">Grey-Box</option>
+                <option value="White-Box Penetration Test">White-Box</option>
+                <option value="Internal Penetration Test">Internal</option>
+                <option value="Web Application Penetration Test">Web Application</option>
+                <option value="API Penetration Test">API</option>
+                <option value="Mobile Application Penetration Test">Mobile App</option>
+                <option value="Network Infrastructure Penetration Test">Network Infrastructure</option>
+              </select>
+            </div>
+            <div class="form-group full"><label>Out-of-Scope (optional)</label><input id="fOutScope" placeholder="e.g. Third-party integrations, DoS testing, physical security"></div>
+          </div>
+        </div>
+
+        <!-- RED TEAM FIELDS -->
+        <div id="fields-redteam" class="type-fields" style="display:none;">
+          <div class="field-section-label">Red Team Engagement Specifics</div>
+          <div class="form-grid">
+            <div class="form-group full"><label>Primary Objective / Crown Jewels</label><textarea id="fObjective" style="min-height:60px;" placeholder="e.g. Reach customer PII database&#10;Obtain Domain Admin credentials"></textarea></div>
+            <div class="form-group full"><label>Threat Actor Scenario Simulated</label><input id="fThreatActor" placeholder="e.g. APT29-style nation-state / financially-motivated eCrime group"></div>
+            <div class="form-group full"><label>In-Scope Systems</label><textarea id="fRedScope" style="min-height:60px;" placeholder="e.g. All externally reachable assets under acme.com"></textarea></div>
+            <div class="form-group"><label>Tested From</label>
+              <select id="fRedTestedFrom">
+                <option value="External — Internet">External — Internet</option>
+                <option value="External + Internal Pivot">External + Internal Pivot</option>
+                <option value="Assumed Breach — Internal">Assumed Breach — Internal</option>
+              </select>
+            </div>
+            <div class="form-group"><label>Blue Team Awareness</label>
+              <select id="fBlueAwareness">
+                <option value="None — Blind Engagement">None — Blind Engagement</option>
+                <option value="SOC Lead Only">SOC Lead Only</option>
+                <option value="Full Blue Team Awareness">Full Blue Team Awareness (Purple)</option>
+              </select>
+            </div>
+            <div class="form-group"><label>C2 Framework Used</label><input id="fC2" placeholder="e.g. Cobalt Strike / Havoc / Sliver"></div>
+            <div class="form-group"><label>Initial Access Vector</label>
+              <select id="fInitAccess">
+                <option value="Spear Phishing">Spear Phishing</option>
+                <option value="Phishing + Callback">Phishing + Callback</option>
+                <option value="External Vulnerability Exploit">External Vulnerability Exploit</option>
+                <option value="VPN / Credential Stuffing">VPN / Credential Stuffing</option>
+                <option value="Assumed Breach">Assumed Breach</option>
+                <option value="Supply Chain">Supply Chain</option>
+                <option value="Physical Access">Physical Access</option>
+              </select>
+            </div>
+            <div class="form-group"><label>Crown Jewels Reached?</label>
+              <select id="fCrownReached">
+                <option value="Yes — All objectives achieved">Yes — All objectives</option>
+                <option value="Yes — Partial (some objectives)">Yes — Partial</option>
+                <option value="No — Objectives not reached">No — Not reached</option>
+              </select>
+            </div>
+            <div class="form-group"><label>Blue Team Detection Rate</label><input id="fDetectionRate" placeholder="e.g. 20% (2 of 10 TTPs detected)"></div>
+            <div class="form-group"><label>Engagement Duration</label><input id="fDuration" placeholder="e.g. 4 weeks (28 days)"></div>
+          </div>
+        </div>
+
+        <!-- PHISHING FIELDS -->
+        <div id="fields-phishing" class="type-fields" style="display:none;">
+          <div class="field-section-label"><span style="display:inline-flex;align-items:center;gap:5px;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg> Phishing Campaign — Overall Stats</span></div>
+          <div class="form-grid">
+            <div class="form-group full"><label>Target Audience / Departments</label><input id="fPhishAudience" placeholder="e.g. All staff (343 users) — Finance, HR, IT, Trade Surveillance"></div>
+            <div class="form-group"><label>Campaign Period</label><input id="fPhishPeriod" placeholder="e.g. Jan 28 – Feb 5, 2026"></div>
+            <div class="form-group"><label>Phishing Platform</label><input id="fPhishPlatform" placeholder="e.g. KnowBe4 / Gophish / Proofpoint"></div>
+            <div class="form-group"><label>Total Recipients</label><input id="fPhishTotal" type="number" placeholder="343"></div>
+            <div class="form-group"><label>Total Phished (Clicked)</label><input id="fClicked" type="number" placeholder="16"></div>
+            <div class="form-group"><label>Credentials Submitted</label><input id="fCreds" type="number" placeholder="8"></div>
+            <div class="form-group"><label>Reported to IT Security</label><input id="fReported" type="number" placeholder="97"></div>
+            <div class="form-group"><label>Training Assigned</label><input id="fTraining" type="number" placeholder="16"></div>
+            <div class="form-group"><label>Reviewer</label><input id="fPhishReviewer" placeholder="e.g. John Doe"></div>
+            <div class="form-group"><label>Approver</label><input id="fPhishApprover" placeholder="e.g. John Doe"></div>
+          </div>
+          <div class="field-section-label" style="margin-top:14px;"><span style="display:inline-flex;align-items:center;gap:5px;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg> Campaign Details</span></div>
+          <div id="campaignList" style="margin-bottom:8px;"></div>
+          <button class="btn btn-ghost btn-sm" onclick="addCampaign()" style="width:100%;margin-bottom:10px;">+ Add Campaign</button>
+          <div class="field-section-label"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;margin-right:5px;"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Distribution List</div>
+          <div id="distList" style="margin-bottom:8px;"></div>
+          <button class="btn btn-ghost btn-sm" onclick="addDistEntry()" style="width:100%;margin-bottom:8px;">+ Add Recipient</button>
+          <div class="field-section-label"><span style="display:inline-flex;align-items:center;gap:5px;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> Phished Employees</span></div>
+          <div id="phishedList" style="margin-bottom:8px;"></div>
+          <button class="btn btn-ghost btn-sm" onclick="addPhishedEntry()" style="width:100%;margin-bottom:8px;">+ Add Employee</button>
+          <input type="hidden" id="fPhishType" value="Phishing Campaign">
+          <input type="hidden" id="fPretext" value=""><input type="hidden" id="fSpoofed" value="">
+          <input type="hidden" id="fPhishDomain" value=""><input type="hidden" id="fMfaBypass" value="Not Attempted">
+          <input type="hidden" id="fPhishAwareness" value="Unannounced"><input type="hidden" id="fEmailsSent" value="">
+        </div>
+
+        <div style="margin-top:12px;">
+          <label style="font-size:12px;font-weight:500;color:var(--t2);">Assessor (as shown on report)</label>
+          <div class="assessor-combined" id="assessorPreview" style="margin-top:6px;">—</div>
+        </div>
+      </div>
+
+      <!-- Logos -->
+      <div class="card">
+        <div class="card-label">Cover Page Logos <span style="font-size:10px;color:var(--t3);font-weight:400;">(upload once — reused for all reports)</span></div>
+        <div class="logo-grid">
+          <div>
+            <div style="font-size:10.5px;font-weight:600;color:var(--t3);margin-bottom:6px;font-family:var(--mono);letter-spacing:.06em;">CLIENT LOGO (left)</div>
+            <div class="logo-slot" id="slotCompany" onclick="document.getElementById('qlogoC').click()">
+              <div id="pvCompany" style="display:none;"><img id="imgCompany" src="" alt="" style="max-height:46px;max-width:130px;object-fit:contain;"></div>
+              <div id="phCompany"><div style="margin-bottom:6px;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="opacity:.2;"><rect x="2" y="3" width="20" height="18" rx="2"/><line x1="8" y1="21" x2="8" y2="9"/><line x1="16" y1="21" x2="16" y2="9"/><line x1="2" y1="9" x2="22" y2="9"/></svg></div><div class="logo-slot-lbl">Click to Upload</div><div class="logo-slot-hint">PNG · JPG · WEBP</div></div>
+              <span class="logo-x" onclick="event.stopPropagation();clearLogo('Company')">&times;</span>
+            </div>
+          </div>
+          <div>
+            <div style="font-size:10.5px;font-weight:600;color:var(--t3);margin-bottom:6px;font-family:var(--mono);letter-spacing:.06em;">ASSESSOR LOGO (right)</div>
+            <div class="logo-slot" id="slotTester" onclick="document.getElementById('qlogoT').click()">
+              <div id="pvTester" style="display:none;"><img id="imgTester" src="" alt="" style="max-height:46px;max-width:130px;object-fit:contain;"></div>
+              <div id="phTester"><div style="margin-bottom:8px;"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="opacity:.2;"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div><div class="logo-slot-lbl">Click to Upload</div><div class="logo-slot-hint">PNG · JPG · WEBP</div></div>
+              <span class="logo-x" onclick="event.stopPropagation();clearLogo('Tester')">&times;</span>
+            </div>
+          </div>
+        </div>
+        <input type="file" id="qlogoC" style="display:none" accept=".png,.jpg,.jpeg,.webp" onchange="quickLogo(this,'company')">
+        <input type="file" id="qlogoT" style="display:none" accept=".png,.jpg,.jpeg,.webp" onchange="quickLogo(this,'tester')">
+        <div style="font-size:11px;color:var(--t3);margin-top:7px;display:flex;align-items:center;gap:5px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--t3)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;vertical-align:middle;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg> PNG with transparent background recommended · Minimum 300×120px</div>
+      </div>
+
+      <!-- Findings -->
+      <div class="card">
+        <div class="card-label">Findings Input</div>
+        <div class="imethods">
+          <div class="imethod active" onclick="switchInput('raw',this)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;margin-right:5px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>Paste / Raw Notes</div>
+          <div class="imethod" onclick="switchInput('manual',this)"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg> Manual Form</div>
+          <div class="imethod" onclick="switchInput('tool',this)"><span style="display:inline-flex;align-items:center;gap:5px;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg> Tool Import</span></div>
+        </div>
+        <div class="ipanel active" id="ip-raw">
+          <textarea id="rawFindings" placeholder="Paste your raw pentest notes, scan output, or findings here..."></textarea>
+        </div>
+        <div class="ipanel" id="ip-manual">
+          <div id="findingsList"></div>
+          <button class="btn btn-ghost btn-sm" onclick="addFinding()">+ Add Finding</button>
+        </div>
+        <div class="ipanel" id="ip-tool">
+          <div class="upload-zone" onclick="document.getElementById('toolImport').click()">
+            <div style="margin-bottom:8px;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg></div>Upload Nessus (.nessus) · Burp (.xml) · Nmap (.xml)
+          </div>
+          <input type="file" id="toolImport" style="display:none" accept=".xml,.nessus" onchange="importTool(this)">
+          <div id="importStatus" style="font-size:11px;color:var(--t3);margin-top:6px;"></div>
+          <textarea id="importedFindings" style="display:none;margin-top:10px;" placeholder="Imported findings will appear here..."></textarea>
+        </div>
+      </div>
+
+      <div id="logoWarnBanner" style="display:none;"></div>
+      <button class="btn btn-primary" id="genBtn" onclick="generate()" style="width:100%;padding:12px;font-size:13.5px;justify-content:center;letter-spacing:.03em;">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg> Generate Report
+      </button>
+      <div style="font-size:11px;color:var(--t3);margin-top:7px;text-align:center;font-family:var(--mono);">Knowledge base + template loaded automatically</div>
+
+      <div id="reportOut" style="display:none;margin-top:22px;">
+        <div class="div"></div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+          <div>
+            <span style="font-size:13.5px;font-weight:700;color:var(--success);display:flex;align-items:center;gap:6px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><polyline points="20 6 9 17 4 12"/></svg> Report Generated</span>
+            <span id="genRid" style="font-size:11.5px;color:var(--t3);margin-left:10px;font-family:var(--mono);"></span>
+          </div>
+          <button class="btn btn-ghost btn-sm" onclick="toggleView()">Toggle Raw/Rendered</button>
+        </div>
+        <div class="viewer">
+          <div id="mdView" class="md"></div>
+          <pre id="rawView" style="display:none;"></pre>
+        </div>
+        <div class="export-bar">
+          <span style="font-size:11.5px;color:var(--t3);font-family:var(--mono);">Export:</span>
+          <button class="btn btn-ghost btn-sm" onclick="exp('docx')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg> DOCX</button>
+          <button class="btn btn-ghost btn-sm" onclick="exp('pdf')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg> PDF</button>
+          <button class="btn btn-ghost btn-sm" onclick="exp('md')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/></svg> Markdown</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- REPORTS -->
+    <div class="panel" id="panel-reports">
+      <div class="pg-header">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <div><div class="pg-title">Reports</div><div class="pg-sub">All generated reports stored locally</div></div>
+          <button class="btn btn-ghost btn-sm" onclick="loadReports()">↺ Refresh</button>
+        </div>
+      </div>
+      <div id="reportsList"><div class="empty-state">Loading reports...</div></div>
+      <div id="reportDetail" style="display:none;margin-top:20px;">
+        <div class="div"></div>
+        <div class="viewer"><div id="reportDetailMd" class="md"></div></div>
+      </div>
+    </div>
+
+    <!-- LOGOS -->
+    <div class="panel" id="panel-logos">
+      <div class="pg-header"><div class="pg-title">Company Logos</div><div class="pg-sub">Appear on the report cover page — client left, assessor right</div></div>
+      <div id="logoAlert"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;">
+        <div class="card">
+          <div class="card-label">Client / Company Logo</div>
+          <div class="logo-slot" id="mgmtSlotCompany" onclick="document.getElementById('mgmtUploadC').click()" style="margin-bottom:12px;min-height:96px;">
+            <div id="mgmtPvCompany" style="display:none;"><img id="mgmtImgCompany" src="" alt="" style="max-height:58px;max-width:165px;object-fit:contain;"></div>
+            <div id="mgmtPhCompany"><div style="margin-bottom:6px;"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="opacity:.18;"><rect x="2" y="3" width="20" height="18" rx="2"/><line x1="8" y1="21" x2="8" y2="9"/><line x1="16" y1="21" x2="16" y2="9"/><line x1="2" y1="9" x2="22" y2="9"/></svg></div><div class="logo-slot-lbl">Click to Upload</div><div class="logo-slot-hint">PNG · JPG · WEBP</div></div>
+          </div>
+          <input type="file" id="mgmtUploadC" style="display:none" accept=".png,.jpg,.jpeg,.webp" onchange="uploadLogo(this,'company')">
+          <button class="btn btn-danger btn-sm" onclick="deleteLogo('company')" style="width:100%;">Remove Logo</button>
+        </div>
+        <div class="card">
+          <div class="card-label">Security Firm / Assessor Logo</div>
+          <div class="logo-slot" id="mgmtSlotTester" onclick="document.getElementById('mgmtUploadT').click()" style="margin-bottom:12px;min-height:96px;">
+            <div id="mgmtPvTester" style="display:none;"><img id="mgmtImgTester" src="" alt="" style="max-height:58px;max-width:165px;object-fit:contain;"></div>
+            <div id="mgmtPhTester"><div style="margin-bottom:8px;"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="opacity:.2;"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div><div class="logo-slot-lbl">Click to Upload</div><div class="logo-slot-hint">PNG · JPG · WEBP</div></div>
+          </div>
+          <input type="file" id="mgmtUploadT" style="display:none" accept=".png,.jpg,.jpeg,.webp" onchange="uploadLogo(this,'tester')">
+          <button class="btn btn-danger btn-sm" onclick="deleteLogo('tester')" style="width:100%;">Remove Logo</button>
+        </div>
+      </div>
+      <div class="alert alert-info" style="margin-top:14px;">Recommended: PNG with transparent background, minimum 300×120px. Logos stored in <code>ui/static/logos/</code> — embedded in every DOCX export.</div>
+    </div>
+
+    <!-- TEMPLATES -->
+    <div class="panel" id="panel-templates">
+      <div class="pg-header"><div class="pg-title">Templates</div><div class="pg-sub">VAJRA templates — select a template to drive report structure</div></div>
+      <div class="upload-zone" onclick="document.getElementById('tmplUpload').click()"><div style="margin-bottom:8px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--t3)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg></div>Upload Template (.docx / .md / .html)</div>
+      <input type="file" id="tmplUpload" style="display:none" accept=".docx,.md,.html,.txt" onchange="uploadTmpl(this)">
+      <div id="tmplAlert"></div>
+      {% for t in templates %}
+      <div class="fitem"><span style="display:flex;align-items:center;gap:6px;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg> {{ t }}</span><span style="color:var(--t3);font-size:11px;font-family:var(--mono);">VAJRA/</span></div>
+      {% else %}
+      <div style="color:var(--t3);font-size:12px;padding:12px;font-family:var(--mono);">3 templates included: Pentest · Red Team · Phishing</div>
+      {% endfor %}
+    </div>
+
+    <!-- KNOWLEDGE BASE -->
+    <div class="panel" id="panel-knowledge">
+      <div class="pg-header"><div class="pg-title">Knowledge Base</div><div class="pg-sub">Markdown files auto-loaded as AI context during report generation</div></div>
+      <div class="upload-zone" onclick="document.getElementById('kbUpload').click()"><div style="margin-bottom:8px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--t3)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></div>Upload Knowledge File (.md / .txt)</div>
+      <input type="file" id="kbUpload" style="display:none" accept=".md,.txt" onchange="uploadKB(this)">
+      <div id="kbAlert"></div>
+      {% for f in kb_files %}
+      <div class="fitem"><span style="display:flex;align-items:center;gap:6px;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg> {{ f }}</span><span style="color:var(--t3);font-size:11px;font-family:var(--mono);">knowledge/</span></div>
+      {% else %}
+      <div style="color:var(--t3);font-size:12px;padding:12px;font-family:var(--mono);">Pre-loaded: OWASP Top 10 · CWE · Severity definitions · Remediation boilerplate</div>
+      {% endfor %}
+    </div>
+
+    <!-- CONFIG -->
+    <div class="panel" id="panel-config">
+      <div class="pg-header"><div class="pg-title">System Config</div><div class="pg-sub">Runtime status · Edit .env to change settings · Restart to apply</div></div>
+      <div class="cfg-grid" id="cfgGrid" style="margin-bottom:18px;"></div>
+      <div class="alert alert-warn">Edit the <code>.env</code> file in the project root and restart the server to apply changes.</div>
+      <div class="card" style="margin-top:12px;">
+        <div class="card-label">Environment Variables</div>
+        <pre style="font-size:12px;line-height:2;color:var(--t2);font-family:var(--mono);">AI_PROVIDER=anthropic
+AI_API_KEY=sk-ant-your-key-here
+AI_BASE_URL=https://api.anthropic.com
+AI_MODEL=claude-sonnet-4-6
+SKIP_SSL_VERIFY=false</pre>
+      </div>
+    </div>
+
+    <!-- TEAM -->
+    <div class="panel" id="panel-team">
+      <div class="pg-header"><div class="pg-title">Team Management</div><div class="pg-sub">Manage team access — admin only</div></div>
+      <div id="teamAlert"></div>
+      <div class="card">
+        <div class="card-label">Create New User</div>
+        <div class="form-grid">
+          <div class="form-group"><label>Username</label><input id="newUsername" type="text" placeholder="e.g. alice"></div>
+          <div class="form-group"><label>Full Name</label><input id="newFullName" type="text" placeholder="e.g. John Doe"></div>
+          <div class="form-group"><label>Password</label><input id="newPassword" type="password" placeholder="min 8 characters"></div>
+          <div class="form-group"><label>Role</label>
+            <select id="newRole">
+              <option value="analyst">Analyst — generate + export</option>
+              <option value="viewer">Viewer — view + export only</option>
+              <option value="admin">Admin — full access</option>
+            </select>
+          </div>
+        </div>
+        <div style="margin-top:12px;"><button class="btn btn-primary" onclick="createUser()">Create User</button></div>
+      </div>
+      <div class="card">
+        <div class="card-label">Current Users</div>
+        <div id="teamUserList"><div class="empty-state">Loading...</div></div>
+      </div>
+      <div class="card">
+        <div class="card-label">Role Permissions</div>
+        <table style="width:100%;border-collapse:collapse;font-size:13px;">
+          <tr style="border-bottom:1px solid var(--b1)">
+            <th style="text-align:left;padding:8px 4px;color:var(--t3);font-size:10px;font-weight:600;letter-spacing:.08em;font-family:var(--mono);">PERMISSION</th>
+            <th style="text-align:center;padding:8px 4px;color:var(--crit);font-size:10px;font-weight:600;">ADMIN</th>
+            <th style="text-align:center;padding:8px 4px;color:var(--accent);font-size:10px;font-weight:600;">ANALYST</th>
+            <th style="text-align:center;padding:8px 4px;color:var(--t3);font-size:10px;font-weight:600;">VIEWER</th>
+          </tr>
+          <tr style="border-bottom:1px solid var(--b1)"><td style="padding:8px 4px;color:var(--t2)">Generate reports</td><td style="text-align:center;color:var(--success)">✓</td><td style="text-align:center;color:var(--success)">✓</td><td style="text-align:center;color:var(--t3)">—</td></tr>
+          <tr style="border-bottom:1px solid var(--b1)"><td style="padding:8px 4px;color:var(--t2)">Export reports</td><td style="text-align:center;color:var(--success)">✓</td><td style="text-align:center;color:var(--success)">✓</td><td style="text-align:center;color:var(--success)">✓</td></tr>
+          <tr style="border-bottom:1px solid var(--b1)"><td style="padding:8px 4px;color:var(--t2)">Upload templates / KB</td><td style="text-align:center;color:var(--success)">✓</td><td style="text-align:center;color:var(--success)">✓</td><td style="text-align:center;color:var(--t3)">—</td></tr>
+          <tr style="border-bottom:1px solid var(--b1)"><td style="padding:8px 4px;color:var(--t2)">Delete own reports</td><td style="text-align:center;color:var(--success)">✓</td><td style="text-align:center;color:var(--success)">✓</td><td style="text-align:center;color:var(--t3)">—</td></tr>
+          <tr style="border-bottom:1px solid var(--b1)"><td style="padding:8px 4px;color:var(--t2)">Delete any report</td><td style="text-align:center;color:var(--success)">✓</td><td style="text-align:center;color:var(--t3)">—</td><td style="text-align:center;color:var(--t3)">—</td></tr>
+          <tr><td style="padding:8px 4px;color:var(--t2)">Manage users</td><td style="text-align:center;color:var(--success)">✓</td><td style="text-align:center;color:var(--t3)">—</td><td style="text-align:center;color:var(--t3)">—</td></tr>
+        </table>
+      </div>
+    </div>
+
+    <!-- SHARE MODAL -->
+    <div id="shareModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:8000;align-items:center;justify-content:center;backdrop-filter:blur(6px);">
+      <div style="background:var(--s2);border:1px solid var(--b2);border-radius:12px;padding:26px 28px;width:460px;max-width:95vw;max-height:85vh;overflow-y:auto;box-shadow:0 24px 64px rgba(0,0,0,.5);">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">
+          <div>
+            <div style="font-size:14px;font-weight:700;color:var(--t1);">Share Report</div>
+            <div id="shareModalTitle" style="font-size:11.5px;color:var(--t3);margin-top:2px;font-family:var(--mono);"></div>
+          </div>
+          <button onclick="closeShareModal()" style="background:var(--s3);border:1px solid var(--b2);border-radius:6px;color:var(--t2);font-size:16px;cursor:pointer;width:28px;height:28px;display:flex;align-items:center;justify-content:center;transition:all .13s;">&times;</button>
+        </div>
+        <div style="margin-bottom:16px;">
+          <label style="font-size:11.5px;font-weight:600;color:var(--t2);display:block;margin-bottom:7px;letter-spacing:.01em;">Visibility</label>
+          <div style="display:flex;gap:6px;">
+            <button id="vis-private" onclick="setVisibility('private')" class="btn btn-ghost btn-sm" style="flex:1;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> Private</button>
+            <button id="vis-team"    onclick="setVisibility('team')"    class="btn btn-ghost btn-sm" style="flex:1;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg> Team</button>
+            <button id="vis-public"  onclick="setVisibility('public')"  class="btn btn-ghost btn-sm" style="flex:1;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg> Public</button>
+          </div>
+          <div style="font-size:11.5px;color:var(--t3);margin-top:7px;" id="visDesc"></div>
+        </div>
+        <div style="margin-bottom:16px;">
+          <label style="font-size:11.5px;font-weight:600;color:var(--t2);display:block;margin-bottom:7px;">Share with Specific User</label>
+          <div style="display:flex;gap:7px;">
+            <select id="shareUserSelect" style="flex:1;font-size:13px;"><option value="">— Select user —</option></select>
+            <button class="btn btn-primary btn-sm" onclick="addShare()">Add</button>
+          </div>
+        </div>
+        <div>
+          <label style="font-size:11.5px;font-weight:600;color:var(--t2);display:block;margin-bottom:7px;">People with Access</label>
+          <div id="shareList" style="min-height:40px;"></div>
+        </div>
+        <div id="shareModalAlert" style="margin-top:10px;"></div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+let activeType='pentest', currentReportId=null, findingIdx=0;
+let _userPickedTemplate = false;
+
+function onUserPickTemplate() { _userPickedTemplate = true; }
+window.addEventListener('DOMContentLoaded', () => {
+  // Show pentest fields by default and auto-select template
+  selType('pentest', document.querySelector('.rtype.sel'));
+});
+
+document.addEventListener('DOMContentLoaded',()=>{
+  document.getElementById('fDate').value=new Date().toISOString().split('T')[0];
+  loadStatus();
+  loadLogos();
+  setInterval(loadStatus,30000);
+  initTeamSession();
+});
+
+// ── Navigation ──
+function nav(id,el){
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  if(el) el.classList.add('active');
+  document.getElementById('panel-'+id).classList.add('active');
+  if(id==='reports') loadReports();
+  if(id==='team') loadTeamPanel();
+}
+
+// ── Status ──
+async function loadStatus(){
+  try{
+    const d=await(await fetch('/api/status')).json();
+    // AI status checked
+    const dot=document.getElementById('sDot'),txt=document.getElementById('sText');
+    const mn=document.getElementById('modelName'),mb=document.getElementById('topModelBadge');
+    if(d.ai_connected){dot.className='dot dot-ok';txt.textContent='AI Connected';txt.style.color='var(--success)';}
+    else if(d.api_key_set){dot.className='dot dot-warn';txt.textContent='API Key Set';txt.style.color='var(--warn)';}
+    else{dot.className='dot dot-err';txt.textContent='Not Configured';txt.style.color='var(--critical)';}
+    const m=d.model||'—';
+    mn.textContent=m; mb.textContent=m;
+    // Logo warning — shown on generate page
+    const logoWarn = document.getElementById('logoWarnBanner');
+    if (logoWarn) {
+      const missing = [];
+      if (!d.company_logo) missing.push('Client logo');
+      if (!d.tester_logo)  missing.push('Assessor logo');
+      if (missing.length) {
+        logoWarn.innerHTML = `<div style="background:#e6394622;border:1px solid #e63946;border-radius:6px;padding:8px 12px;font-size:11px;color:#ff8080;margin-bottom:10px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> ${missing.join(' & ')} not uploaded — cover page will show placeholder text. Upload via the <strong>Logos</strong> tab.</div>`;
+        logoWarn.style.display='block';
+      } else {
+        logoWarn.innerHTML=''; logoWarn.style.display='none';
+      }
+    }
+    const g=document.getElementById('cfgGrid');
+    if(g) g.innerHTML=[
+      ['Provider',(d.provider||'anthropic').charAt(0).toUpperCase()+(d.provider||'anthropic').slice(1)],
+      ['Model',m],
+      ['API Key',d.api_key_set?'✓ Set':'✗ Missing'],
+      ['Templates',d.templates+' loaded'],
+      ['Reports',d.reports+' saved'],
+      ['KB Files',d.kb_files+' files']
+    ].map(([k,v])=>`<div class="cfg-item"><div class="k">${k}</div><div class="v">${v}</div></div>`).join('');
+  }catch(e){document.getElementById('sDot').className='dot dot-err';}
+}
+
+// ── Assessor combined display ──
+function updateAssessorDisplay(){
+  const name=(document.getElementById('fTester').value||'').trim();
+  const team=(document.getElementById('fAssessmentTeam').value||'').trim();
+  const preview=document.getElementById('assessorPreview');
+  if(!name&&!team){preview.textContent='—';preview.style.color='var(--text3)';return;}
+  const combined=name+(team?` (${team})`:'');
+  preview.textContent=combined;
+  preview.style.color='var(--text)';
+}
+
+// ── Report type — dynamic field switching ──
+const TYPE_CONFIG = {
+  pentest: {
+    label: "Penetration Test — Engagement Details",
+    template: "VAJRA-PENTEST-REPORT.md",
+    findingsPlaceholder: "Paste raw pentest notes, scan output, or findings here...\n\nExamples:\n  SQL injection in /api/login — payload: \' OR 1=1 --\n  Reflected XSS in search param — medium severity\n  Weak session tokens, no HttpOnly/Secure flags\n  Directory listing on /backup/\n  Default credentials on admin panel",
+    findingsLabel: "Paste / Raw Notes",
+  },
+  redteam: {
+    label: "Red Team Engagement — Details",
+    template: "VAJRA-REDTEAM-REPORT.md",
+    findingsPlaceholder: "Describe the attack chain, TTPs used, and observations...\n\nExamples:\n  Initial access via spear phish → exec macro → Cobalt Strike beacon\n  Lateral movement: Pass-the-Hash to file server\n  Credential dump: LSASS → domain admin hash\n  Reached crown jewel: customer DB — exfil test file\n  Not detected by SOC for 72 hours",
+    findingsLabel: "Attack Chain / Observations",
+  },
+  phishing: {
+    label: "Phishing Campaign — Details",
+    template: "VAJRA-PHISHING-REPORT.md",
+    findingsPlaceholder: "Describe campaign observations, notable user behaviours, and technical findings...\n\nExamples:\n  67 of 450 users clicked (14.9%) — Finance dept highest rate (28%)\n  38 users submitted credentials on fake login page\n  12 users correctly reported the email\n  DMARC policy set to none — emails not rejected\n  AiTM proxy successfully bypassed MFA for 8 accounts",
+    findingsLabel: "Campaign Observations",
+  }
+};
+
+function selType(t, el) {
+  activeType = t;
+  document.querySelectorAll('.rtype').forEach(r => r.classList.remove('sel'));
+  el.classList.add('sel');
+
+  // Show/hide type-specific field blocks
+  document.querySelectorAll('.type-fields').forEach(f => f.style.display = 'none');
+  const fields = document.getElementById('fields-' + t);
+  if (fields) fields.style.display = 'block';
+
+  // Update card label
+  const cfg = TYPE_CONFIG[t] || TYPE_CONFIG.pentest;
+  const lbl = document.getElementById('engagementCardLabel');
+  if (lbl) lbl.textContent = cfg.label;
+
+  // Auto-select matching template — only if user has NOT manually picked one
+  const tpl = document.getElementById('fTemplate');
+  if (tpl && cfg.template && !_userPickedTemplate) {
+    for (let i = 0; i < tpl.options.length; i++) {
+      if (tpl.options[i].value === cfg.template) { tpl.selectedIndex = i; break; }
+    }
+  }
+  // If current selection is a VAJRA default, allow type-switching to re-suggest
+  const _vajraDefs = ['VAJRA-PENTEST-REPORT.md','VAJRA-REDTEAM-REPORT.md','VAJRA-PHISHING-REPORT.md',''];
+  if (tpl && _vajraDefs.includes(tpl.value)) _userPickedTemplate = false;
+
+  // Update findings textarea placeholder
+  const raw = document.getElementById('rawFindings');
+  if (raw) raw.placeholder = cfg.findingsPlaceholder;
+
+  // Update findings method tab label
+  const tabs = document.querySelectorAll('.imethod');
+  if (tabs[0]) tabs[0].innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;margin-right:5px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>' + cfg.findingsLabel;
+}
+
+// ── Input method toggle ──
+function switchInput(id,el){
+  document.querySelectorAll('.imethod').forEach(m=>m.classList.remove('active'));
+  document.querySelectorAll('.ipanel').forEach(p=>p.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('ip-'+id).classList.add('active');
+}
+
+// ── Manual finding form ──
+function addFinding(){
+  findingIdx++;const i=findingIdx;
+  const div=document.createElement('div');div.className='fcard sev-medium';div.id='f-'+i;
+  div.innerHTML=`
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+      <span style="font-size:10px;letter-spacing:2px;color:var(--text3);">FINDING #${i}</span>
+      <button class="btn btn-danger btn-xs" onclick="this.closest('.fcard').remove()">&times;</button>
+    </div>
+    <div class="form-grid">
+      <div class="form-group"><label>Title</label><input id="f${i}t" placeholder="SQL Injection in /api/login"></div>
+      <div class="form-group"><label>Severity</label><select id="f${i}s" onchange="var c=this.value.toLowerCase();this.closest('.fcard').className='fcard sev-'+c"><option>Critical</option><option>High</option><option selected>Medium</option><option>Low</option><option>Info</option></select></div>
+      <div class="form-group"><label>CVE / CWE</label><input id="f${i}c" placeholder="CWE-89"></div>
+      <div class="form-group"><label>Affected Host</label><input id="f${i}h" placeholder="app.example.com"></div>
+      <div class="form-group full"><label>Description</label><textarea id="f${i}d" style="min-height:65px" placeholder="Root cause and attack vector..."></textarea></div>
+      <div class="form-group full"><label>Evidence / PoC</label><textarea id="f${i}e" style="min-height:55px" placeholder="Payload, request, steps... (add screenshots in Word after export)"></textarea></div>
+      <div class="form-group full"><label>Impact</label><textarea id="f${i}i" style="min-height:45px" placeholder="Business impact..."></textarea></div>
+      <div class="form-group full"><label>Remediation</label><textarea id="f${i}r" style="min-height:45px" placeholder="Fix steps..."></textarea></div>
+    </div>`;
+  document.getElementById('findingsList').appendChild(div);
+}
+
+function collectFormFindings(){
+  const parts=[];
+  document.querySelectorAll('[id^="f"][id$="t"]').forEach(el=>{
+    const m=el.id.match(/^f(\d+)t$/);if(!m)return;
+    const i=m[1];const t=el.value?.trim();if(!t)return;
+    parts.push([`Finding: ${t}`,`Severity: ${document.getElementById('f'+i+'s')?.value||'Info'}`,`CVE/CWE: ${document.getElementById('f'+i+'c')?.value||''}`,`Host: ${document.getElementById('f'+i+'h')?.value||''}`,`Description: ${document.getElementById('f'+i+'d')?.value||''}`,`Evidence: ${document.getElementById('f'+i+'e')?.value||''}`,`Impact: ${document.getElementById('f'+i+'i')?.value||''}`,`Remediation: ${document.getElementById('f'+i+'r')?.value||''}`].join('\n'));
+  });
+  return parts.join('\n\n---\n\n');
+}
+
+// ── Load logos ──
+async function loadLogos(){
+  try{
+    const d=await(await fetch('/api/logos')).json();
+    if(d.company) setLogoPv('company',d.company+'?t='+Date.now());
+    if(d.tester)  setLogoPv('tester', d.tester +'?t='+Date.now());
+  }catch(e){}
+}
+
+function setLogoPv(type,url){
+  // type = 'company' or 'tester'
+  const cap=type[0].toUpperCase()+type.slice(1); // 'Company' or 'Tester'
+  // Quick-upload slot (New Report panel)
+  const pv=document.getElementById('pv'+cap);
+  const ph=document.getElementById('ph'+cap);
+  const img=document.getElementById('img'+cap);
+  const slot=document.getElementById('slot'+cap);
+  if(pv&&img){img.src=url;pv.style.display='block';}
+  if(ph) ph.style.display='none';
+  if(slot) slot.classList.add('has-logo');
+  // Management panel
+  const mpv=document.getElementById('mgmtPv'+cap);
+  const mph=document.getElementById('mgmtPh'+cap);
+  const mimg=document.getElementById('mgmtImg'+cap);
+  const mslot=document.getElementById('mgmtSlot'+cap);
+  if(mpv&&mimg){mimg.src=url;mpv.style.display='block';}
+  if(mph) mph.style.display='none';
+  if(mslot) mslot.classList.add('has-logo');
+}
+
+function clearLogo(Cap){
+  // Cap = 'Company' or 'Tester'
+  ['pv'+Cap,'mgmtPv'+Cap].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});
+  ['ph'+Cap,'mgmtPh'+Cap].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='block';});
+  ['slot'+Cap,'mgmtSlot'+Cap].forEach(id=>{const el=document.getElementById(id);if(el)el.classList.remove('has-logo');});
+}
+
+function deleteLogo(type){clearLogo(type[0].toUpperCase()+type.slice(1));}
+
+async function uploadLogo(input,type){
+  const file=input.files[0];if(!file)return;
+  const fd=new FormData();fd.append('logo',file);fd.append('type',type);
+  const d=await(await fetch('/api/upload-logo',{method:'POST',body:fd})).json();
+  if(d.error){showAlert('logoAlert',d.error,'error');return;}
+  setLogoPv(type,d.url+'?t='+Date.now());
+  showAlert('logoAlert',`✓ ${type==='company'?'Client':'Assessor'} logo uploaded`,'success');
+}
+
+async function quickLogo(input,type){
+  const file=input.files[0];if(!file)return;
+  const fd=new FormData();fd.append('logo',file);fd.append('type',type);
+  const d=await(await fetch('/api/upload-logo',{method:'POST',body:fd})).json();
+  if(!d.error) setLogoPv(type,d.url+'?t='+Date.now());
+}
+
+// ── Load Reports (dynamic) ──
+async function loadReports(){
+  const el=document.getElementById('reportsList');
+  el.innerHTML='<div class="empty-state">Loading...</div>';
+  try{
+    const d=await(await fetch('/api/reports')).json();
+    if(!d.length){el.innerHTML='<div class="empty-state">No reports yet. Generate your first one.</div>';return;}
+    el.innerHTML=d.map(r=>{
+    const isOwner = _me && (r.created_by===_me.username || (_me.role==='admin'));
+    const visColor = r.visibility==='private'?'var(--critical)':r.visibility==='public'?'var(--success)':'var(--blue)';
+    const visLabel = (r.visibility||'team').toUpperCase();
+    const ownerTag = r.created_by && r.created_by!==(_me&&_me.username) ? `<span style="font-size:10px;color:var(--text3);margin-left:6px;">by ${escHtml(r.created_by)}</span>` : '';
+    return `<div class="rcard" id="rc-${r.id}">
+        <span class="badge badge-${r.report_type||'pentest'}">${(r.report_type||'pentest').toUpperCase()}</span>
+        <div class="rcard-info">
+          <div class="rcard-title">${escHtml(r.title||'Untitled')}${ownerTag}</div>
+          <div class="rcard-meta">
+            ${escHtml(r.client||'—')} · ${escHtml(r.tester||'—')} · ${(r.created_at||'').slice(0,10)}
+            <span style="margin-left:8px;padding:1px 7px;border-radius:3px;font-size:9px;font-weight:700;letter-spacing:1px;background:${visColor}20;color:${visColor};border:1px solid ${visColor}40;">${visLabel}</span>
+          </div>
+        </div>
+        <div class="rcard-actions">
+          <button class="btn btn-ghost btn-xs" onclick="viewReport(${r.id})">View</button>
+          <button class="btn btn-ghost btn-xs" onclick="location='/api/export/${r.id}/docx'">DOCX</button>
+          <button class="btn btn-ghost btn-xs" onclick="location='/api/export/${r.id}/pdf'">PDF</button>
+          ${isOwner ? `<button class="btn btn-ghost btn-xs" onclick="openShareModal(${r.id},'${escHtml(r.title||'')}','${r.visibility||'team'}')" style="color:var(--blue);"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg> Share</button>` : ''}
+          ${isOwner ? `<button class="btn btn-danger btn-xs" onclick="delReport(${r.id})">&times;</button>` : ''}
+        </div>
+      </div>`;
+  }).join('');
+  }catch(e){console.error('loadReports error:',e);el.innerHTML='<div class="empty-state" style="color:var(--critical);">Failed to load reports: '+e.message+'</div>';}
+}
+
+// ── Generate ──
+async function generate(){
+  // Detect active input panel by ID (not text — tab labels change per report type)
+  let findings='';
+  if(document.getElementById('ip-raw')?.classList.contains('active')){
+    findings=document.getElementById('rawFindings').value;
+  } else if(document.getElementById('ip-manual')?.classList.contains('active')){
+    findings=collectFormFindings();
+  } else {
+    findings=document.getElementById('importedFindings').value||'';
+  }
+  // For phishing/redteam: auto-build findings from structured fields if rawFindings is empty
+  if (!findings.trim() && activeType === 'phishing') {
+    findings = buildPhishingFindings();
+  }
+  if (!findings.trim() && activeType === 'redteam') {
+    const parts = [];
+    if (typeFields.objective)      parts.push(`Objective: ${typeFields.objective}`);
+    if (typeFields.threat_actor)   parts.push(`Threat actor profile: ${typeFields.threat_actor}`);
+    if (typeFields.c2_framework)   parts.push(`C2 framework: ${typeFields.c2_framework}`);
+    if (typeFields.init_access)    parts.push(`Initial access: ${typeFields.init_access}`);
+    if (typeFields.crown_reached)  parts.push(`Crown jewel reached: ${typeFields.crown_reached}`);
+    if (typeFields.detection_rate) parts.push(`Detection rate: ${typeFields.detection_rate}`);
+    if (typeFields.blue_awareness) parts.push(`Blue team awareness: ${typeFields.blue_awareness}`);
+    if (typeFields.duration)       parts.push(`Engagement duration: ${typeFields.duration}`);
+    if (parts.length) findings = parts.join('\n');
+  }
+  if(!findings.trim()){showAlert('genAlert','Please add findings or fill in the campaign/engagement fields before generating.','error');return;}
+
+  const client   = document.getElementById('fClient').value;
+  const tester   = document.getElementById('fTester').value;
+  const team     = document.getElementById('fAssessmentTeam').value;
+  const mergedTester = tester + (team ? ` (${team})` : '');
+  const date     = document.getElementById('fDate').value;
+  const engRef   = document.getElementById('fEngRef').value || ('VAJRA-' + new Date().getFullYear() + '-' + String(Date.now()).slice(-4));
+  const classif  = document.getElementById('fClassification').value;
+  const version  = document.getElementById('fVersion').value;
+
+  // ── Type-specific fields ──
+  const typeFields = {};
+  if (activeType === 'pentest') {
+    typeFields.target_system  = document.getElementById('fTargetSystem').value;
+    typeFields.tested_from    = document.getElementById('fTestedFrom').value;
+    typeFields.scope          = document.getElementById('fScope').value;
+    typeFields.out_of_scope   = document.getElementById('fOutScope').value;
+    typeFields.assess_type    = document.getElementById('fAssessType').value;
+  } else if (activeType === 'redteam') {
+    typeFields.target_system  = document.getElementById('fRedScope').value;
+    typeFields.tested_from    = document.getElementById('fRedTestedFrom').value;
+    typeFields.scope          = document.getElementById('fRedScope').value;
+    typeFields.objective      = document.getElementById('fObjective').value;
+    typeFields.threat_actor   = document.getElementById('fThreatActor').value;
+    typeFields.c2_framework   = document.getElementById('fC2').value;
+    typeFields.init_access    = document.getElementById('fInitAccess').value;
+    typeFields.crown_reached  = document.getElementById('fCrownReached').value;
+    typeFields.detection_rate = document.getElementById('fDetectionRate').value;
+    typeFields.blue_awareness = document.getElementById('fBlueAwareness').value;
+    typeFields.duration       = document.getElementById('fDuration').value;
+  } else if (activeType === 'phishing') {
+    typeFields.target_system    = document.getElementById('fPhishAudience')?.value || '';
+    typeFields.tested_from      = 'External — Internet';
+    typeFields.scope            = document.getElementById('fPhishAudience')?.value || '';
+    typeFields.total_recipients = document.getElementById('fPhishTotal')?.value || '';
+    typeFields.emails_sent      = document.getElementById('fPhishTotal')?.value || '';
+    typeFields.clicked          = document.getElementById('fClicked')?.value || '';
+    typeFields.creds            = document.getElementById('fCreds')?.value || '';
+    typeFields.reported         = document.getElementById('fReported')?.value || '';
+    typeFields.training         = document.getElementById('fTraining')?.value || '';
+    typeFields.reviewer         = document.getElementById('fPhishReviewer')?.value || '';
+    typeFields.approver         = document.getElementById('fPhishApprover')?.value || '';
+    typeFields.campaign_period  = document.getElementById('fPhishPeriod')?.value || '';
+    typeFields.platform         = document.getElementById('fPhishPlatform')?.value || '';
+    typeFields.campaigns        = collectCampaigns();
+    typeFields.distribution_list = collectDistList();
+    typeFields.phished_employees = collectPhishedEmployees();
+  }
+
+  setLoad(true, 'GENERATING REPORT', 'AI is analysing your findings and structuring the report...');
+  document.getElementById('genBtn').disabled = true;
+  try {
+    const res = await fetch('/api/generate', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        report_type:    activeType,
+        client,
+        tester:         mergedTester,
+        date,
+        scope:          typeFields.scope || '',
+        target_system:  typeFields.target_system || '',
+        tested_from:    typeFields.tested_from || 'External Network',
+        assessment_team: team,
+        engagement_ref: engRef,
+        classification: classif,
+        report_version: version,
+        template_name:  document.getElementById('fTemplate').value,
+        findings_text:  findings,
+        extra_fields:   typeFields,
+        title: activeType.toUpperCase() + ' — ' + (client || 'Client') + ' — ' + date
+      })
+    });
+    const d = await res.json();
+    if (d.error) { showAlert('genAlert', d.error, 'error'); return; }
+
+    // ── Large report: async chunked generation with live progress ──
+    if (d.async) {
+      await pollGenerationProgress(d.job_id, d.total_findings, d.total_chunks);
+      return;
+    }
+
+    // ── Small report: synchronous, direct result ──
+    currentReportId = d.report_id;
+    // Fallback: if report_id missing, fetch most recent report id
+    if (!currentReportId) {
+      try {
+        const rlist = await (await fetch('/api/reports')).json();
+        if (rlist && rlist.length) currentReportId = rlist[0].id;
+      } catch(e) {}
+    }
+    document.getElementById('rawView').textContent = d.content;
+    document.getElementById('mdView').innerHTML = md2html(d.content);
+    document.getElementById('genRid').textContent = currentReportId ? 'Report #' + currentReportId : 'Generated';
+    document.getElementById('reportOut').style.display = 'block';
+    document.getElementById('reportOut').scrollIntoView({behavior:'smooth'});
+    showAlert('genAlert', '✓ Report generated' + (currentReportId ? ' & saved (ID: ' + currentReportId + ')' : '') + '  ·  Export as DOCX for full formatting.', 'success');
+  } catch(e) { showAlert('genAlert', 'Error: ' + e.message, 'error'); }
+  finally { setLoad(false); document.getElementById('genBtn').disabled = false; }
+}
+
+async function pollGenerationProgress(jobId, totalFindings, totalChunks) {
+  // Show dedicated progress UI for large reports
+  const progressHtml = `
+    <div id="chunkProgress" style="background:#0D1B2A;border-radius:10px;padding:28px 32px;margin-top:20px;color:#fff;font-family:'JetBrains Mono',monospace;">
+      <div style="display:flex;align-items:center;gap:14px;margin-bottom:18px;">
+        <div style="width:12px;height:12px;background:#2563EB;border-radius:50%;animation:pulse 1.4s ease-in-out infinite;flex-shrink:0;"></div>
+        <span style="font-size:13px;font-weight:600;letter-spacing:0.08em;color:#93C5FD;">
+          GENERATING LARGE REPORT — ${totalFindings} FINDINGS · ${totalChunks} AI CALLS
+        </span>
+      </div>
+      <div style="background:#162640;border-radius:6px;height:8px;margin-bottom:12px;overflow:hidden;">
+        <div id="chunkBar" style="height:100%;width:1%;background:linear-gradient(90deg,#2563EB,#60A5FA);transition:width 0.4s ease;border-radius:6px;"></div>
+      </div>
+      <div id="chunkMsg" style="font-size:11px;color:#94A3B8;letter-spacing:0.05em;">Initialising…</div>
+      <div style="margin-top:16px;font-size:10px;color:#475569;line-height:1.7;">
+        Each finding batch generates in parallel — quality is consistent across all ${totalFindings} findings.<br>
+        Large reports (20+ findings) typically take 60–120 seconds.
+      </div>
+    </div>`;
+  document.getElementById('genAlert').innerHTML = progressHtml;
+  document.getElementById('genAlert').style.display = 'block';
+
+  return new Promise((resolve) => {
+    const interval = setInterval(async () => {
+      try {
+        const pr = await (await fetch('/api/generate/progress/' + jobId)).json();
+        const bar = document.getElementById('chunkBar');
+        const msg = document.getElementById('chunkMsg');
+        if (bar) bar.style.width = (pr.pct || 1) + '%';
+        if (msg) msg.textContent = pr.message || '…';
+
+        if (pr.status === 'done') {
+          clearInterval(interval);
+          const result = pr.result || {};
+          currentReportId = result.report_id;
+          const content = result.content || '';
+          document.getElementById('rawView').textContent = content;
+          document.getElementById('mdView').innerHTML = md2html(content);
+          document.getElementById('genRid').textContent = 'Report #' + (currentReportId || jobId);
+          document.getElementById('reportOut').style.display = 'block';
+          document.getElementById('reportOut').scrollIntoView({behavior:'smooth'});
+          const prog = document.getElementById('chunkProgress');
+          if (prog) prog.remove();
+          showAlert('genAlert',
+            `✓ Large report complete — ${totalFindings} findings generated across ${totalChunks} AI calls. Export as DOCX for full formatting.`,
+            'success');
+          setLoad(false);
+          document.getElementById('genBtn').disabled = false;
+          resolve();
+        } else if (pr.status === 'error') {
+          clearInterval(interval);
+          const prog = document.getElementById('chunkProgress');
+          if (prog) prog.remove();
+          showAlert('genAlert', 'Generation error: ' + (pr.error || 'Unknown error'), 'error');
+          setLoad(false);
+          document.getElementById('genBtn').disabled = false;
+          resolve();
+        }
+      } catch(e) {
+        clearInterval(interval);
+        showAlert('genAlert', 'Progress poll error: ' + e.message, 'error');
+        setLoad(false);
+        document.getElementById('genBtn').disabled = false;
+        resolve();
+      }
+    }, 2000); // poll every 2 seconds
+  });
+}
+
+// ── Export / View ──
+function exp(fmt){
+  if(currentReportId){
+    window.location='/api/export/'+currentReportId+'/'+fmt;
+  } else {
+    showAlert('genAlert','No report ID — please generate a report first or refresh the Reports tab and click export from there.','error');
+  }
+}
+function toggleView(){
+  const r=document.getElementById('rawView'),m=document.getElementById('mdView');
+  const isR=r.style.display!=='none';
+  r.style.display=isR?'none':'block';
+  m.style.display=isR?'block':'none';
+}
+async function viewReport(id){
+  const d=await(await fetch('/api/report/'+id)).json();
+  document.getElementById('reportDetailMd').innerHTML=md2html(d.generated_content||'');
+  const el=document.getElementById('reportDetail');
+  el.style.display='block';
+  el.scrollIntoView({behavior:'smooth'});
+}
+async function delReport(id){
+  if(!confirm('Delete this report?'))return;
+  await fetch('/api/report/'+id,{method:'DELETE'});
+  document.getElementById('rc-'+id)?.remove();
+}
+
+// ── Tool import ──
+async function importTool(input){
+  const file=input.files[0];if(!file)return;
+  const st=document.getElementById('importStatus');st.textContent='Parsing '+file.name+'...';
+  const fd=new FormData();fd.append('file',file);
+  try{
+    const d=await(await fetch('/api/parse-tool-import',{method:'POST',body:fd})).json();
+    if(d.error){st.textContent='⚠ '+d.error;return;}
+    st.textContent='✓ '+d.count+' findings imported from '+file.name;
+    const ta=document.getElementById('importedFindings');ta.value=d.findings_text;ta.style.display='block';
+  }catch(e){st.textContent='⚠ '+e.message;}
+}
+
+// ── Template / KB upload ──
+async function uploadTmpl(input){
+  const file=input.files[0];if(!file)return;
+  const fd=new FormData();fd.append('file',file);
+  const d=await(await fetch('/api/upload-template',{method:'POST',body:fd})).json();
+  showAlert('tmplAlert',d.error||'✓ Template "'+d.filename+'" uploaded',d.error?'error':'success');
+  if(!d.error){const opt=new Option(d.filename,d.filename);document.getElementById('fTemplate').appendChild(opt);}
+}
+async function uploadKB(input){
+  const file=input.files[0];if(!file)return;
+  const fd=new FormData();fd.append('file',file);
+  const d=await(await fetch('/api/upload-knowledge',{method:'POST',body:fd})).json();
+  showAlert('kbAlert',d.error||'✓ "'+d.filename+'" added to knowledge base',d.error?'error':'success');
+}
+
+// ── Helpers ──
+function setLoad(on,msg='',sub=''){
+  document.getElementById('loaderMsg').textContent=msg;
+  document.getElementById('loaderSub').textContent=sub;
+  document.getElementById('loader').classList.toggle('on',on);
+}
+function showAlert(id,msg,type){
+  const el=document.getElementById(id);if(!el)return;
+  el.style.display='block';
+  el.innerHTML='<div style="padding:10px 14px;border-radius:6px;font-size:13px;margin-bottom:12px;'+(type==='success'?'background:#16a34a22;border:1px solid #16a34a;color:#4ade80':'background:#e6394622;border:1px solid #e63946;color:#ff8080')+'">'+msg.replace(/\n/g,'<br>')+'</div>';
+  if(type==='success')setTimeout(()=>{el.innerHTML='';el.style.display='none';},5000);
+}
+
+function md2html(md){
+  let s=md.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/^#### (.+)$/gm,'<h4>$1</h4>')
+    .replace(/^### (.+)$/gm,'<h3>$1</h3>')
+    .replace(/^## (.+)$/gm,'<h2>$1</h2>')
+    .replace(/^# (.+)$/gm,'<h1>$1</h1>')
+    .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+    .replace(/`(.+?)`/g,'<code>$1</code>');
+  s=s.replace(/((?:^\|.+\n)+)/gm,match=>{
+    const rows=match.trim().split('\n').filter(r=>!/^\|[-: |]+\|$/.test(r.trim()));
+    return'<table>'+rows.map((r,i)=>{
+      const cells=r.trim().replace(/^\||\|$/g,'').split('|').map(c=>`<${i===0?'th':'td'}>${c.trim()}</${i===0?'th':'td'}>`).join('');
+      return`<tr>${cells}</tr>`;
+    }).join('')+'</table>';
+  });
+  s=s.replace(/^- (.+)$/gm,'<li>$1</li>')
+    .replace(/(<li>.*<\/li>\n?)+/gs,'<ul>$&</ul>')
+    .replace(/\n\n+/g,'</p><p>')
+    .replace(/\n/g,'<br>');
+  return'<p>'+s+'</p>';
+}
+// ── Team session (graceful — works with or without auth) ─────────────────────
+let _me = null;
+
+function escHtml(s){
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+async function initTeamSession(){
+  try{
+    const r = await fetch('/api/me');
+    if(r.status === 401){
+      try{
+        const lp = await fetch('/login',{method:'HEAD'});
+        if(lp.ok) window.location.href='/login';
+      }catch(e){}
+      return;
+    }
+    if(!r.ok) return;
+    _me = await r.json();
+    if(!_me||!_me.authenticated) return;
+    applyRoleUI(_me);
+  }catch(e){}
+}
+
+function applyRoleUI(me){
+  if(!me) return;
+  const role=me.role||'analyst';
+  const perms=me.permissions||{};
+  const badge=document.getElementById('userBadge');
+  if(badge){
+    const rc=role==='admin'?'var(--red)':role==='analyst'?'var(--blue)':'var(--text3)';
+    badge.innerHTML=`<div style="padding:12px 20px;border-top:1px solid var(--border);margin-top:8px;"><div style="font-size:10px;letter-spacing:2px;color:${rc};text-transform:uppercase;">${escHtml(role)}</div><div style="font-size:12px;color:var(--text);margin-top:2px;">${escHtml(me.full_name||me.username)}</div><button onclick="doLogout()" style="margin-top:8px;width:100%;background:transparent;border:1px solid var(--border);border-radius:4px;color:var(--text3);cursor:pointer;font-family:var(--mono);font-size:10px;letter-spacing:1px;padding:5px 0;">LOGOUT</button></div>`;
+  }
+  if(perms.can_generate===false){const gb=document.getElementById('genBtn');if(gb){gb.disabled=true;gb.title='Viewer role cannot generate reports';}}
+  if(perms.can_manage_users){const tn=document.getElementById('teamNavItem');if(tn)tn.style.display='flex';}
+}
+
+async function doLogout(){
+  try{await fetch('/api/logout',{method:'POST'});}catch(e){}
+  window.location.href='/login';
+}
+
+async function loadTeamPanel(){
+  try{
+    const r=await fetch('/api/users');
+    if(!r.ok){document.getElementById('teamUserList').innerHTML='<div class="empty-state" style="color:var(--critical);">Access denied — admin only</div>';return;}
+    const users=await r.json();
+    const el=document.getElementById('teamUserList');
+    if(!el)return;
+    if(!users.length){el.innerHTML='<div class="empty-state">No users found</div>';return;}
+    el.innerHTML=users.map(u=>{
+      const isYou=_me&&u.username===_me.username;
+      const rc=u.role==='admin'?'var(--red)':u.role==='analyst'?'var(--blue)':'var(--text3)';
+      const ll=u.last_login?u.last_login.substring(0,16):'Never';
+      const dis=u.is_disabled?'<span style="color:var(--critical);font-size:10px;margin-left:6px;">DISABLED</span>':'';
+      let btns='';
+      if(isYou){btns='<span style="font-size:11px;color:var(--text3);">(you)</span>';}
+      else{
+        if(u.is_disabled)btns+=`<button class="btn btn-ghost btn-xs" onclick="toggleUser('${u.username}','enable')" style="color:var(--success);">Enable</button> `;
+        else btns+=`<button class="btn btn-ghost btn-xs" onclick="toggleUser('${u.username}','disable')" style="color:var(--warn);">Disable</button> `;
+        btns+=`<button class="btn btn-danger btn-xs" onclick="deleteUser('${u.username}')">&times;</button>`;
+      }
+      return `<div class="rcard" style="margin-bottom:8px;"><div class="rcard-info"><div class="rcard-title">${escHtml(u.full_name||u.username)} <span style="font-size:11px;color:var(--text3);">(${escHtml(u.username)})</span>${dis}</div><div class="rcard-meta"><span style="color:${rc};font-size:10px;letter-spacing:1px;text-transform:uppercase;">${escHtml(u.role)}</span> · Last login: ${escHtml(ll)}</div></div><div class="rcard-actions">${btns}</div></div>`;
+    }).join('');
+  }catch(e){console.error('loadTeamPanel',e);}
+}
+
+async function toggleUser(username,action){
+  if(!confirm(`${action==='disable'?'Disable':'Enable'} "${username}"?`))return;
+  const r=await fetch(`/api/users/${username}/${action}`,{method:'POST'});
+  const d=await r.json();
+  if(d.success)loadTeamPanel();
+  else showAlert('teamAlert',d.error||'Failed','error');
+}
+
+async function deleteUser(username){
+  if(!confirm(`Permanently delete "${username}"?`))return;
+  const r=await fetch(`/api/users/${username}`,{method:'DELETE'});
+  const d=await r.json();
+  if(d.success)loadTeamPanel();
+  else showAlert('teamAlert',d.error||'Failed','error');
+}
+
+async function createUser(){
+  const username=document.getElementById('newUsername').value.trim();
+  const password=document.getElementById('newPassword').value;
+  const role=document.getElementById('newRole').value;
+  const full_name=document.getElementById('newFullName').value.trim();
+  if(!username||!password){showAlert('teamAlert','Username and password required','error');return;}
+  const r=await fetch('/api/users',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username,password,role,full_name})});
+  const d=await r.json();
+  if(d.success){
+    document.getElementById('newUsername').value='';
+    document.getElementById('newPassword').value='';
+    document.getElementById('newFullName').value='';
+    loadTeamPanel();
+    showAlert('teamAlert','✓ User created','success');
+  }else{showAlert('teamAlert',d.error||'Failed','error');}
+}
+
+// ── Phishing Campaign Form ────────────────────────────────────────────────────
+let _campIdx = 0, _distIdx = 0, _phishedIdx = 0;
+
+function addCampaign() {
+  _campIdx++;
+  const i = _campIdx;
+  const div = document.createElement('div');
+  div.id = 'camp-' + i;
+  div.style.cssText = 'background:var(--s3);border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:10px;';
+  div.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+      <span style="font-size:10px;letter-spacing:2px;color:var(--text3);">CAMPAIGN #${i}</span>
+      <button class="btn btn-danger btn-xs" onclick="document.getElementById('camp-${i}').remove()">&times;</button>
+    </div>
+    <div class="form-grid">
+      <div class="form-group full"><label>Campaign Topic / Pretext</label>
+        <input id="camp${i}topic" placeholder="e.g. Outlook Calendar: RSVP Teams Meeting"></div>
+      <div class="form-group full"><label>Internal Campaign Title / ID</label>
+        <input id="camp${i}title" placeholder="e.g. TradeSurveillance_010926_OutlookInvite"></div>
+      <div class="form-group"><label>Group / Department Targeted</label>
+        <input id="camp${i}group" placeholder="e.g. John Doe"></div>
+      <div class="form-group"><label>Total Members</label>
+        <input id="camp${i}total" type="number" placeholder="e.g. 71"></div>
+      <div class="form-group"><label>Phished (Clicked)</label>
+        <input id="camp${i}phished" type="number" placeholder="e.g. 5"></div>
+      <div class="form-group"><label>Start Date</label>
+        <input id="camp${i}start" type="date"></div>
+      <div class="form-group"><label>End Date</label>
+        <input id="camp${i}end" type="date"></div>
+      <div class="form-group full"><label>Email Pretext / Subject Line Description</label>
+        <input id="camp${i}pretext" placeholder="e.g. Calendar invite for teams meeting impersonating internal IT"></div>
+    </div>`;
+  document.getElementById('campaignList').appendChild(div);
+}
+
+function addDistEntry() {
+  _distIdx++;
+  const i = _distIdx;
+  const div = document.createElement('div');
+  div.id = 'dist-' + i;
+  div.style.cssText = 'display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:8px;margin-bottom:8px;align-items:end;';
+  div.innerHTML = `
+    <div><label style="font-size:10px;color:var(--text3);">Name</label>
+      <input id="dist${i}name" placeholder="e.g. John Doe" style="width:100%;"></div>
+    <div><label style="font-size:10px;color:var(--text3);">Title</label>
+      <input id="dist${i}title" placeholder="e.g. VP Security" style="width:100%;"></div>
+    <div><label style="font-size:10px;color:var(--text3);">Department</label>
+      <input id="dist${i}dept" placeholder="e.g. IB Cyber" style="width:100%;"></div>
+    <button class="btn btn-danger btn-xs" onclick="document.getElementById('dist-${i}').remove()" style="margin-bottom:2px;">&times;</button>`;
+  document.getElementById('distList').appendChild(div);
+}
+
+function addPhishedEntry() {
+  _phishedIdx++;
+  const i = _phishedIdx;
+  const div = document.createElement('div');
+  div.id = 'phished-' + i;
+  div.style.cssText = 'display:grid;grid-template-columns:1fr 1fr auto;gap:8px;margin-bottom:8px;align-items:end;';
+  div.innerHTML = `
+    <div><label style="font-size:10px;color:var(--text3);">Email</label>
+      <input id="phished${i}email" placeholder="e.g. user@company.com" style="width:100%;"></div>
+    <div><label style="font-size:10px;color:var(--text3);">Department</label>
+      <input id="phished${i}dept" placeholder="e.g. Finance" style="width:100%;"></div>
+    <button class="btn btn-danger btn-xs" onclick="document.getElementById('phished-${i}').remove()" style="margin-bottom:2px;">&times;</button>`;
+  document.getElementById('phishedList').appendChild(div);
+}
+
+function collectCampaigns() {
+  const campaigns = [];
+  document.querySelectorAll('[id^="camp-"]').forEach(el => {
+    const i = el.id.split('-')[1];
+    const topic   = document.getElementById('camp'+i+'topic')?.value?.trim();
+    const title   = document.getElementById('camp'+i+'title')?.value?.trim();
+    const group   = document.getElementById('camp'+i+'group')?.value?.trim();
+    const total   = document.getElementById('camp'+i+'total')?.value?.trim();
+    const phished = document.getElementById('camp'+i+'phished')?.value?.trim();
+    const start   = document.getElementById('camp'+i+'start')?.value?.trim();
+    const end     = document.getElementById('camp'+i+'end')?.value?.trim();
+    const pretext = document.getElementById('camp'+i+'pretext')?.value?.trim();
+    if (topic || group) campaigns.push({ topic, title, group, total, phished, start, end, pretext });
+  });
+  return campaigns;
+}
+
+function collectDistList() {
+  const list = [];
+  document.querySelectorAll('[id^="dist-"]').forEach(el => {
+    const i = el.id.split('-')[1];
+    const name  = document.getElementById('dist'+i+'name')?.value?.trim();
+    const title = document.getElementById('dist'+i+'title')?.value?.trim();
+    const dept  = document.getElementById('dist'+i+'dept')?.value?.trim();
+    if (name) list.push(name + (title?'|'+title:'') + (dept?'|'+dept:''));
+  });
+  return list.join('\n');
+}
+
+function collectPhishedEmployees() {
+  const list = [];
+  document.querySelectorAll('[id^="phished-"]').forEach(el => {
+    const i = el.id.split('-')[1];
+    const email = document.getElementById('phished'+i+'email')?.value?.trim();
+    const dept  = document.getElementById('phished'+i+'dept')?.value?.trim();
+    if (email) list.push(email + (dept?' | '+dept:''));
+  });
+  return list.join('\n');
+}
+
+function buildPhishingFindings() {
+  // Build structured findings text from ALL phishing form data
+  // This is what gets sent to the AI and to the filler
+  const parts = [];
+
+  // Overall stats
+  const total    = document.getElementById('fPhishTotal')?.value?.trim();
+  const clicked  = document.getElementById('fClicked')?.value?.trim();
+  const creds    = document.getElementById('fCreds')?.value?.trim();
+  const reported = document.getElementById('fReported')?.value?.trim();
+  const training = document.getElementById('fTraining')?.value?.trim();
+  const audience = document.getElementById('fPhishAudience')?.value?.trim();
+  const period   = document.getElementById('fPhishPeriod')?.value?.trim();
+  const platform = document.getElementById('fPhishPlatform')?.value?.trim();
+
+  if (audience)  parts.push('Target audience: ' + audience);
+  if (period)    parts.push('Campaign period: ' + period);
+  if (platform)  parts.push('Platform used: ' + platform);
+  if (total)     parts.push('Total recipients: ' + total);
+  if (clicked)   parts.push('Total phished (clicked): ' + clicked +
+                             (total ? ' (' + (clicked/total*100).toFixed(1) + '%)' : ''));
+  if (creds)     parts.push('Credentials submitted: ' + creds +
+                             (total ? ' (' + (creds/total*100).toFixed(1) + '%)' : ''));
+  if (reported)  parts.push('Reported to IT security: ' + reported +
+                             (total ? ' (' + (reported/total*100).toFixed(1) + '%)' : ''));
+  if (training)  parts.push('Employees assigned training: ' + training);
+
+  // Per-campaign data
+  const camps = collectCampaigns();
+  if (camps.length) {
+    parts.push('');
+    parts.push('CAMPAIGN BREAKDOWN:');
+    camps.forEach((c, idx) => {
+      const n = idx + 1;
+      parts.push(`Campaign ${n}: ${c.topic || 'Campaign ' + n}`);
+      if (c.group)   parts.push(`  Group targeted: ${c.group}`);
+      if (c.total)   parts.push(`  Total members: ${c.total}`);
+      if (c.phished) parts.push(`  Phished: ${c.phished}` +
+                       (c.total ? ` (${(c.phished/c.total*100).toFixed(1)}%)` : ''));
+      if (c.start)   parts.push(`  Start date: ${c.start}`);
+      if (c.end)     parts.push(`  End date: ${c.end}`);
+      if (c.pretext) parts.push(`  Email pretext: ${c.pretext}`);
+      if (c.title)   parts.push(`  Campaign title: ${c.title}`);
+    });
+  }
+
+  // Phished employees
+  const employees = collectPhishedEmployees();
+  if (employees) {
+    parts.push('');
+    parts.push('PHISHED EMPLOYEES (appendix):');
+    parts.push(employees);
+  }
+
+  return parts.join('\n');
+}
+
+// ── Share / Access Control ────────────────────────────────────────────────────
+let _shareRid = null;
+let _shareCurrentVis = 'team';
+
+const VIS_DESC = {
+  private: 'Only you, admins, and people you explicitly share with can access this report.',
+  team:    'All logged-in analysts and admins can see this report (ignores individual shares).',
+  public:  'Everyone including viewers can access this report.'
+};
+
+async function openShareModal(rid, title, currentVis) {
+  _shareRid = rid;
+  _shareCurrentVis = currentVis || 'team';
+  document.getElementById('shareModalTitle').textContent = title || 'Report #' + rid;
+  document.getElementById('shareModal').style.display = 'flex';
+  updateVisButtons(_shareCurrentVis);
+  await loadShareData();
+}
+
+function closeShareModal() {
+  document.getElementById('shareModal').style.display = 'none';
+  _shareRid = null;
+}
+
+function updateVisButtons(vis) {
+  ['private','team','public'].forEach(v => {
+    const btn = document.getElementById('vis-'+v);
+    if (!btn) return;
+    btn.style.borderColor = v===vis ? 'var(--red)' : 'var(--border)';
+    btn.style.color = v===vis ? 'var(--red)' : 'var(--text3)';
+  });
+  const desc = document.getElementById('visDesc');
+  if (desc) desc.textContent = VIS_DESC[vis] || '';
+}
+
+async function setVisibility(vis) {
+  if (!_shareRid) return;
+  const r = await fetch(`/api/report/${_shareRid}/visibility`, {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({visibility: vis})
+  });
+  const d = await r.json();
+  if (d.success) {
+    _shareCurrentVis = vis;
+    updateVisButtons(vis);
+    // Update badge on the report card
+    loadReports();
+    showShareAlert('✓ Visibility updated to ' + vis, 'success');
+  } else {
+    showShareAlert(d.error || 'Failed', 'error');
+  }
+}
+
+async function loadShareData() {
+  if (!_shareRid) return;
+  try {
+    const r = await fetch(`/api/report/${_shareRid}/shares`);
+    if (!r.ok) {
+      document.getElementById('shareList').innerHTML = '<div style="color:var(--text3);font-size:12px;">No share data available</div>';
+      return;
+    }
+    const d = await r.json();
+    // Populate user dropdown
+    const sel = document.getElementById('shareUserSelect');
+    sel.innerHTML = '<option value="">— Select user —</option>';
+    (d.users || []).forEach(u => {
+      // Skip users already shared with
+      const alreadyShared = (d.shares || []).some(s => s.shared_with === u.username);
+      if (!alreadyShared) {
+        const opt = document.createElement('option');
+        opt.value = u.username;
+        opt.textContent = `${u.full_name || u.username} (${u.username}) — ${u.role}`;
+        sel.appendChild(opt);
+      }
+    });
+    // Show current shares
+    const list = document.getElementById('shareList');
+    const shares = d.shares || [];
+    if (!shares.length) {
+      list.innerHTML = '<div style="color:var(--text3);font-size:12px;padding:8px 0;">No individual shares — access controlled by visibility setting above.</div>';
+    } else {
+      list.innerHTML = shares.map(s => `
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);">
+          <div>
+            <span style="font-size:13px;color:var(--text);">${escHtml(s.shared_with)}</span>
+            <span style="font-size:10px;color:var(--text3);margin-left:8px;">shared by ${escHtml(s.shared_by)}</span>
+          </div>
+          <button class="btn btn-danger btn-xs" onclick="revokeShare('${escHtml(s.shared_with)}')">Revoke</button>
+        </div>`).join('');
+    }
+    // Update visibility buttons to current state
+    updateVisButtons(d.visibility || _shareCurrentVis);
+  } catch(e) {
+    document.getElementById('shareList').innerHTML = '<div style="color:var(--critical);font-size:12px;">Error loading shares</div>';
+  }
+}
+
+async function addShare() {
+  const username = document.getElementById('shareUserSelect').value;
+  if (!username || !_shareRid) return;
+  const r = await fetch(`/api/report/${_shareRid}/share`, {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({username})
+  });
+  const d = await r.json();
+  if (d.success) {
+    await loadShareData();
+    // If still team/public visibility, suggest switching to private
+    if (_shareCurrentVis !== 'private') {
+      showShareAlert(`✓ Shared with ${username}. Tip: set visibility to Private so ONLY shared users can access this report.`, 'success');
+    } else {
+      showShareAlert(`✓ Shared with ${username}`, 'success');
+    }
+  } else {
+    showShareAlert(d.error || 'Failed', 'error');
+  }
+}
+
+async function revokeShare(username) {
+  if (!_shareRid) return;
+  if (!confirm(`Revoke access for ${username}?`)) return;
+  const r = await fetch(`/api/report/${_shareRid}/share/${username}`, {method:'DELETE'});
+  const d = await r.json();
+  if (d.success) {
+    showShareAlert(`✓ Access revoked for ${username}`, 'success');
+    await loadShareData();
+  } else {
+    showShareAlert(d.error || 'Failed', 'error');
+  }
+}
+
+function showShareAlert(msg, type) {
+  const el = document.getElementById('shareModalAlert');
+  if (!el) return;
+  const color = type==='success' ? '#16a34a' : '#e63946';
+  el.innerHTML = `<div style="padding:8px 12px;border-radius:6px;font-size:12px;background:${color}22;border:1px solid ${color};color:${color};">${escHtml(msg)}</div>`;
+  setTimeout(() => { el.innerHTML = ''; }, 4000);
+}
+
+// Close modal on backdrop click
+document.addEventListener('click', e => {
+  const modal = document.getElementById('shareModal');
+  if (modal && e.target === modal) closeShareModal();
+});
+
+</script>
+
+<!-- Credits footer -->
+<div id="vajra-credits" style="position:fixed;bottom:0;right:0;z-index:999;display:flex;align-items:center;gap:12px;padding:7px 14px;background:rgba(9,9,11,.85);border-top:1px solid rgba(255,255,255,.06);border-left:1px solid rgba(255,255,255,.06);border-radius:8px 0 0 0;backdrop-filter:blur(8px);">
+  <span style="font-family:'Geist Mono',monospace;font-size:10px;color:#52525b;letter-spacing:.04em;">Created by</span>
+  <a href="https://github.com/mah3sec" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:5px;text-decoration:none;color:#a1a1aa;font-family:'Geist Mono',monospace;font-size:10px;letter-spacing:.03em;transition:color .15s;" onmouseover="this.style.color='#fafafa'" onmouseout="this.style.color='#a1a1aa'">
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.477 2 2 6.477 2 12c0 4.42 2.865 8.17 6.839 9.49.5.092.682-.217.682-.482 0-.237-.008-.866-.013-1.7-2.782.604-3.369-1.34-3.369-1.34-.454-1.156-1.11-1.462-1.11-1.462-.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.087 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.029-2.683-.103-.253-.446-1.27.098-2.647 0 0 .84-.269 2.75 1.025A9.578 9.578 0 0 1 12 6.836c.85.004 1.705.114 2.504.336 1.909-1.294 2.747-1.025 2.747-1.025.546 1.377.203 2.394.1 2.647.64.699 1.028 1.592 1.028 2.683 0 3.842-2.339 4.687-4.566 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.744 0 .267.18.578.688.48C19.138 20.167 22 16.418 22 12c0-5.523-4.477-10-10-10z"/></svg>
+    mah3sec
+  </a>
+  <span style="color:#3f3f46;">·</span>
+  <a href="https://twitter.com/mah3sec_" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:5px;text-decoration:none;color:#a1a1aa;font-family:'Geist Mono',monospace;font-size:10px;letter-spacing:.03em;transition:color .15s;" onmouseover="this.style.color='#fafafa'" onmouseout="this.style.color='#a1a1aa'">
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.747l7.73-8.835L1.254 2.25H8.08l4.259 5.629L18.244 2.25zm-1.161 17.52h1.833L7.084 4.126H5.117L17.083 19.77z"/></svg>
+    @mah3sec_
+  </a>
+</div>
+</body>
+</html>
+
+</html>

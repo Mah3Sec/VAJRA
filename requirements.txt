@@ -1,0 +1,34 @@
+# ── Core (always required — no exceptions) ────────────────────────────────────
+flask>=3.0.0
+python-dotenv>=1.0.0
+httpx>=0.25.0,!=0.20.*   # used for ALL provider HTTP calls
+python-docx>=1.1.0
+waitress>=3.0.0
+defusedxml>=0.7.1
+
+# ── Anthropic (Claude) ────────────────────────────────────────────────────────
+# Required for AI_PROVIDER=anthropic|claude
+anthropic>=0.25.0
+
+# ── No extra install needed for these providers ───────────────────────────────
+# All of the following work via plain httpx (already above) — no extra pip:
+#   AI_PROVIDER=openai        ChatGPT / GPT-4o
+#   AI_PROVIDER=grok          xAI Grok
+#   AI_PROVIDER=groq          Groq fast inference
+#   AI_PROVIDER=together      Together AI
+#   AI_PROVIDER=ollama        Local Ollama
+#   AI_PROVIDER=lmstudio      Local LM Studio
+#   AI_PROVIDER=deepseek      DeepSeek
+#   AI_PROVIDER=openrouter    OpenRouter (200+ models)
+#   AI_PROVIDER=perplexity    Perplexity AI
+#   AI_PROVIDER=azure         Azure OpenAI
+#   AI_PROVIDER=mistral       Mistral AI  (uses their OpenAI-compat layer)
+#   AI_PROVIDER=cohere        Cohere      (uses their OpenAI-compat layer)
+
+# ── Google Gemini only ────────────────────────────────────────────────────────
+# Google's SDK is required — their API uses a different request format.
+# Uncomment if AI_PROVIDER=gemini:
+# google-generativeai>=0.8.0
+
+# ── Optional: PDF export ──────────────────────────────────────────────────────
+# pip3 install weasyprint markdown --break-system-packages
