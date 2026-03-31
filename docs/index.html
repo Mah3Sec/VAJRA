@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>VAJRA — Sign In</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#09090b;--s1:#111113;--s2:#18181b;
+  --b1:rgba(255,255,255,.03);--b2:rgba(255,255,255,.08);
+  --t1:#fafafa;--t2:#a1a1aa;--t3:#52525b;
+  --accent:#7c6af7;--ag:rgba(124,106,247,.2);
+  --blue:#3b82f6;--red:#ef4444;--amber:#f59e0b;--purple:#7c6af7;
+}
+html,body{height:100%;font-family:'Geist',system-ui,sans-serif;-webkit-font-smoothing:antialiased;background:var(--bg);color:var(--t1);}
+.page{display:grid;grid-template-columns:1fr 460px;height:100vh;overflow:hidden;}
+
+/* LEFT */
+.L{
+  position:relative;height:100vh;overflow:hidden;
+  border-right:1px solid rgba(255,255,255,.06);
+  display:flex;flex-direction:column;padding:40px 44px;
+}
+.L::before{
+  content:'';position:absolute;inset:0;pointer-events:none;
+}
+.L::after{content:'';position:absolute;top:-140px;left:-140px;width:460px;height:460px;border-radius:50%;pointer-events:none;background:radial-gradient(circle,rgba(124,106,247,.09) 0%,transparent 62%);}
+.L>*{position:relative;z-index:1;}
+
+/* wordmark */
+.wm{display:flex;align-items:center;gap:11px;margin-bottom:32px;flex-shrink:0;}
+.wm-name{font-size:18px;font-weight:700;letter-spacing:.07em;}
+.wm-v{font-family:'Geist Mono',monospace;font-size:11px;color:var(--t3);background:var(--s2);border:1px solid var(--b2);border-radius:4px;padding:3px 8px;}
+
+/* hero */
+.hero{flex-shrink:0;margin-bottom:28px;}
+.pill{display:inline-flex;align-items:center;gap:6px;font-family:'Geist Mono',monospace;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--t3);border:1px solid var(--b2);border-radius:100px;padding:4px 12px;margin-bottom:13px;}
+.pill::before{content:'';width:5px;height:5px;border-radius:50%;background:var(--accent);flex-shrink:0;}
+.hl{font-size:34px;font-weight:700;letter-spacing:-.025em;line-height:1.15;margin-bottom:12px;white-space:nowrap;}
+.hl span{color:var(--accent);}
+.sub{font-size:15px;line-height:1.65;color:var(--t2);}
+
+/* caps */
+.caps{display:grid;grid-template-columns:1fr 1fr;gap:12px;flex-shrink:0;margin-bottom:12px;max-width:640px;}
+.cap{display:flex;align-items:center;gap:14px;padding:18px 20px;background:var(--s2);border:1px solid rgba(255,255,255,.06);border-radius:8px;position:relative;overflow:hidden;}
+.cap::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;border-radius:0 2px 2px 0;}
+.cap-pt::before{background:var(--blue);}
+.cap-rt::before{background:var(--red);}
+.cap-ph::before{background:var(--amber);}
+.cap-cm::before{background:var(--purple);}
+.cap-pt{border-color:rgba(59,130,246,.15);}
+.cap-rt{border-color:rgba(239,68,68,.15);}
+.cap-ph{border-color:rgba(245,158,11,.15);}
+.cap-cm{border-color:rgba(124,106,247,.15);}
+.ci{width:38px;height:38px;border-radius:8px;border:1px solid;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.ci svg{width:17px;height:17px;fill:none;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round;}
+.cap-pt .ci{background:rgba(59,130,246,.1);border-color:rgba(59,130,246,.2);} .cap-pt .ci svg{stroke:#60a5fa;}
+.cap-rt .ci{background:rgba(239,68,68,.08);border-color:rgba(239,68,68,.18);} .cap-rt .ci svg{stroke:#f87171;}
+.cap-ph .ci{background:rgba(245,158,11,.08);border-color:rgba(245,158,11,.18);} .cap-ph .ci svg{stroke:#fbbf24;}
+.cap-cm .ci{background:rgba(124,106,247,.1);border-color:rgba(124,106,247,.2);} .cap-cm .ci svg{stroke:#a78bfa;}
+.ct{font-size:11.5px;font-weight:600;color:var(--t1);margin-bottom:2px;white-space:nowrap;}
+.cd{font-size:11.5px;color:var(--t3);white-space:nowrap;}
+
+/* stats */
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;flex-shrink:0;max-width:580px;margin-bottom:14px;}
+.stat{display:flex;align-items:center;gap:12px;padding:14px 16px;background:var(--s2);border:1px solid rgba(255,255,255,.06);border-radius:8px;}
+.sn{font-family:'Geist Mono',monospace;font-size:26px;font-weight:700;color:var(--t1);line-height:1;flex-shrink:0;}
+.sl{font-family:'Geist Mono',monospace;font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--t3);white-space:nowrap;}
+.ss{font-family:'Geist Mono',monospace;font-size:10px;color:var(--accent);margin-top:3px;white-space:nowrap;}
+.ai-chip{width:46px;height:38px;border-radius:8px;background:linear-gradient(135deg,#1e1b4b,#2e1065);border:1px solid rgba(124,106,247,.4);display:flex;align-items:center;justify-content:center;flex-shrink:0;position:relative;overflow:hidden;box-shadow:0 0 8px rgba(124,106,247,.2),inset 0 1px 0 rgba(255,255,255,.08);}
+.ai-chip::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(124,106,247,.15),transparent 60%);}
+.aci{display:flex;flex-direction:column;align-items:center;gap:2px;position:relative;z-index:1;}
+.aci span{font-family:'Geist Mono',monospace;font-size:10px;font-weight:700;color:#c4b5fd;line-height:1;}
+.adi{display:flex;gap:2px;}
+.adi i{width:2.5px;height:2.5px;border-radius:50%;background:#7c6af7;font-style:normal;}
+.adi i:nth-child(2){background:#a78bfa;} .adi i:nth-child(1),.adi i:nth-child(3){opacity:.5;}
+
+/* REPORT PREVIEW */
+
+
+
+
+.rp-dot.r{background:#ef4444;opacity:.7;} .rp-dot.a{background:#f59e0b;opacity:.7;} .rp-dot.g{background:#22c55e;opacity:.7;}
+
+
+
+
+
+/* skeleton title */
+
+
+.rp-bar.accent{background:rgba(124,106,247,.3);width:55%;}
+.rp-bar.w100{width:100%;}
+.rp-bar.w70{width:70%;}
+.rp-bar.w45{width:45%;}
+
+
+
+/* findings table */
+
+
+.rp-row.hdr{margin-bottom:1px;}
+.rp-row:not(.hdr){background:var(--s1);}
+
+
+
+
+
+
+/* compliance */
+.comp{display:flex;flex-direction:row;border:1px solid var(--b1);border-radius:7px;overflow:hidden;flex-shrink:0;margin-top:auto;max-width:640px;}
+.ci2{flex:1;min-width:0;text-align:center;padding:11px 4px;font-family:'Geist Mono',monospace;font-size:10px;font-weight:600;letter-spacing:.06em;color:var(--t3);background:#18181b;border-right:1px solid rgba(255,255,255,.06);}
+.ci2:last-child{border-right:none;}
+
+/* RIGHT */
+.R{display:flex;flex-direction:column;justify-content:center;padding:44px 48px;background:#111113;border-left:1px solid var(--b2);height:100vh;overflow-y:auto;position:relative;z-index:2;isolation:isolate;}
+
+/* logo */
+
+.r-logo-wrap{display:flex;flex-direction:column;align-items:center;gap:0;margin-bottom:28px;text-align:center;}
+/* animated right logo */
+@keyframes rl-spin-cw  {0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
+@keyframes rl-spin-ccw {0%{transform:rotate(0deg)}100%{transform:rotate(-360deg)}}
+@keyframes rl-pulse    {0%,100%{opacity:.7;filter:drop-shadow(0 0 4px rgba(124,106,247,.5))}50%{opacity:1;filter:drop-shadow(0 0 12px rgba(124,106,247,.9))}}
+@keyframes rl-orb1     {0%{transform:rotate(0deg) translateX(28px) rotate(0deg)}100%{transform:rotate(360deg) translateX(28px) rotate(-360deg)}}
+@keyframes rl-orb2     {0%{transform:rotate(180deg) translateX(28px) rotate(-180deg)}100%{transform:rotate(540deg) translateX(28px) rotate(-540deg)}}
+@keyframes rl-orb3     {0%{transform:rotate(90deg) translateX(22px) rotate(-90deg)}100%{transform:rotate(450deg) translateX(22px) rotate(-450deg)}}
+.rl-scene{position:relative;width:52px;height:52px;flex-shrink:0;}
+.rl-ring1{position:absolute;inset:0;animation:rl-spin-cw 6s linear infinite;}
+.rl-ring2{position:absolute;inset:4px;animation:rl-spin-ccw 4s linear infinite;}
+.rl-orb-wrap{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;}
+.rl-orb{position:absolute;width:5px;height:5px;border-radius:50%;}
+.rl-orb.a{background:#7c6af7;box-shadow:0 0 5px #7c6af7;animation:rl-orb1 3s linear infinite;}
+.rl-orb.b{background:#a78bfa;box-shadow:0 0 4px #a78bfa;opacity:.8;animation:rl-orb2 3s linear infinite;}
+.rl-orb.c{background:#60a5fa;box-shadow:0 0 4px #60a5fa;opacity:.6;animation:rl-orb3 4s linear infinite;}
+.rl-hex{animation:rl-pulse 2.5s ease-in-out infinite;position:absolute;inset:6px;display:flex;align-items:center;justify-content:center;}
+
+
+
+
+
+
+
+.r-logo-name{font-size:24px;font-weight:700;letter-spacing:.07em;color:var(--t1);display:block;margin-bottom:3px;}
+
+
+.fey{font-family:'Geist Mono',monospace;font-size:10px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--t3);margin-bottom:12px;}
+.fh{font-size:24px;font-weight:700;letter-spacing:-.025em;color:var(--t1);margin-bottom:5px;}
+.fp{font-size:13px;color:var(--t2);margin-bottom:26px;}
+.err{display:none;align-items:center;gap:8px;background:rgba(248,113,113,.06);border:1px solid rgba(248,113,113,.2);border-radius:7px;padding:10px 13px;margin-bottom:14px;font-size:13px;color:#f87171;}
+.fld{margin-bottom:13px;}
+.fld label{display:block;font-size:11.5px;font-weight:500;color:var(--t2);margin-bottom:6px;}
+.iw{position:relative;}
+.iw svg{position:absolute;left:12px;top:50%;transform:translateY(-50%);width:13px;height:13px;stroke:var(--t3);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;pointer-events:none;}
+input[type=text],input[type=password]{width:100%;background:var(--s2);border:1px solid var(--b2);border-radius:7px;color:var(--t1);font-family:'Geist',sans-serif;font-size:13.5px;padding:10px 12px 10px 37px;outline:none;transition:border-color .15s,box-shadow .15s;}
+input::placeholder{color:var(--t3);}
+input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--ag);}
+.btn{width:100%;display:flex;align-items:center;justify-content:center;gap:8px;background:var(--accent);border:none;border-radius:7px;color:#fff;font-family:'Geist',sans-serif;font-size:13.5px;font-weight:600;padding:11px;margin-top:6px;cursor:pointer;box-shadow:0 0 0 1px rgba(124,106,247,.5),0 4px 20px rgba(124,106,247,.3);transition:opacity .15s,transform .1s;}
+.btn:hover{opacity:.9;}.btn:active{transform:scale(.99);}.btn:disabled{opacity:.4;cursor:not-allowed;box-shadow:none;}
+.arr{transition:transform .18s;}.btn:hover .arr{transform:translateX(3px);}
+@keyframes spin{to{transform:rotate(360deg);}}
+.spin{width:13px;height:13px;border:2px solid rgba(255,255,255,.25);border-top-color:#fff;border-radius:50%;animation:spin .65s linear infinite;display:none;}
+.btn.busy .spin{display:block;}.btn.busy .lbl,.btn.busy .arr{display:none;}
+.dv{display:flex;align-items:center;gap:12px;margin-top:20px;}
+.dl{flex:1;height:1px;background:rgba(255,255,255,.05);}
+.dt{font-family:'Geist Mono',monospace;font-size:10px;color:var(--t3);white-space:nowrap;}
+.fn{margin-top:12px;text-align:center;font-size:11px;color:var(--t3);}
+.rf{margin-top:18px;text-align:center;font-family:'Geist Mono',monospace;font-size:9.5px;color:var(--t3);letter-spacing:.04em;}
+
+/* ── RIGHT LOGO ANIMATION ── */
+@keyframes rSpin  { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+@keyframes rSpinR { from{transform:rotate(0deg)} to{transform:rotate(-360deg)} }
+@keyframes rGlow  { 0%,100%{filter:drop-shadow(0 0 4px rgba(124,106,247,.5))} 50%{filter:drop-shadow(0 0 12px rgba(124,106,247,.9))} }
+@keyframes rOrb   { from{transform:rotate(0deg) translateX(26px) rotate(0deg)} to{transform:rotate(360deg) translateX(26px) rotate(-360deg)} }
+@keyframes rOrb2  { from{transform:rotate(180deg) translateX(26px) rotate(-180deg)} to{transform:rotate(540deg) translateX(26px) rotate(-540deg)} }
+
+.r-logo-anim { position:relative; width:52px; height:52px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.r-ring-cw  { position:absolute; inset:0; animation:rSpin 10s linear infinite; }
+.r-ring-ccw { position:absolute; inset:8px; animation:rSpinR 7s linear infinite; }
+.r-orb-a { position:absolute; top:50%; left:50%; width:5px; height:5px; margin:-2.5px; border-radius:50%; background:#7c6af7; box-shadow:0 0 5px #7c6af7; animation:rOrb 4s linear infinite; }
+.r-orb-b { position:absolute; top:50%; left:50%; width:4px; height:4px; margin:-2px; border-radius:50%; background:#a78bfa; box-shadow:0 0 4px #a78bfa; opacity:.7; animation:rOrb2 4s linear infinite; }
+.r-hex-icon { position:relative; z-index:1; animation:rGlow 2.5s ease-in-out infinite; }
+
+/* ── GLOBE BACKGROUND ── */
+@keyframes globeSpin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+@keyframes arcDraw { 0%{stroke-dashoffset:300} 60%{stroke-dashoffset:0} 100%{stroke-dashoffset:-300} }
+@keyframes arcDraw2 { 0%{stroke-dashoffset:250} 55%{stroke-dashoffset:0} 100%{stroke-dashoffset:-250} }
+@keyframes arcDraw3 { 0%{stroke-dashoffset:200} 50%{stroke-dashoffset:0} 100%{stroke-dashoffset:-200} }
+@keyframes dotPulse { 0%,100%{r:3;opacity:.9} 50%{r:5;opacity:.4} }
+@keyframes dotPulse2 { 0%,100%{r:2.5;opacity:.7} 50%{r:4;opacity:.3} }
+@keyframes globeFloat { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-6px)} }
+
+.globe-bg {
+  position:fixed; inset:0; pointer-events:none; z-index:0;
+  display:flex; align-items:center; justify-content:center;
+  overflow:hidden;
+}
+.globe-wrap { animation:globeFloat 8s ease-in-out infinite; opacity:0.45; }
+
+/* animated right logo */
+.rl-anim{
+  position:relative;width:54px;height:54px;
+  display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;
+}
+@keyframes rl-spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+@keyframes rl-spin-r{from{transform:rotate(0deg)}to{transform:rotate(-360deg)}}
+@keyframes rl-glow{0%,100%{filter:drop-shadow(0 0 4px rgba(124,106,247,.5))}50%{filter:drop-shadow(0 0 12px rgba(124,106,247,.9))}}
+@keyframes rl-orb1{from{transform:rotate(0deg) translateX(82px) rotate(0deg)}to{transform:rotate(360deg) translateX(82px) rotate(-360deg)}}
+@keyframes rl-orb2{from{transform:rotate(180deg) translateX(82px) rotate(-180deg)}to{transform:rotate(540deg) translateX(82px) rotate(-540deg)}}
+.rl-ring{position:absolute;inset:0;animation:rl-spin 8s linear infinite;}
+.rl-hex{animation:rl-glow 2.5s ease-in-out infinite;}
+.rl-orb{position:absolute;top:50%;left:50%;border-radius:50%;}
+.rl-orb1{width:8px;height:8px;margin:-4px;background:#7c6af7;box-shadow:0 0 8px #7c6af7;animation:rl-orb1 5s linear infinite;}
+.rl-orb2{width:6px;height:6px;margin:-3px;background:#a78bfa;box-shadow:0 0 6px #a78bfa;opacity:.7;animation:rl-orb2 5s linear infinite;}
+
+/* ── NEW RIGHT LOGO SCENE ── */
+.rl-scene-new{position:relative;width:180px;height:180px;display:flex;align-items:center;justify-content:center;}
+@keyframes rln-cw  {from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+@keyframes rln-ccw {from{transform:rotate(0deg)}to{transform:rotate(-360deg)}}
+@keyframes rln-glow{0%,100%{filter:drop-shadow(0 0 6px rgba(124,106,247,.5))}50%{filter:drop-shadow(0 0 18px rgba(124,106,247,.95))}}
+@keyframes rln-o1  {from{transform:rotate(0deg) translateX(84px) rotate(0deg)}to{transform:rotate(360deg) translateX(84px) rotate(-360deg)}}
+@keyframes rln-o2  {from{transform:rotate(120deg) translateX(84px) rotate(-120deg)}to{transform:rotate(480deg) translateX(84px) rotate(-480deg)}}
+@keyframes rln-o3  {from{transform:rotate(240deg) translateX(84px) rotate(-240deg)}to{transform:rotate(600deg) translateX(84px) rotate(-600deg)}}
+.rl-rn-outer{position:absolute;inset:0;animation:rln-cw 14s linear infinite;}
+.rl-rn-inner{position:absolute;top:25px;left:25px;animation:rln-ccw 9s linear infinite;}
+.rl-rn-hex{animation:rln-glow 2.5s ease-in-out infinite;}
+.rl-rn-o1,.rl-rn-o2,.rl-rn-o3{position:absolute;top:50%;left:50%;border-radius:50%;}
+.rl-rn-o1{width:8px;height:8px;margin:-4px;background:#7c6af7;box-shadow:0 0 8px #7c6af7;animation:rln-o1 6s linear infinite;}
+.rl-rn-o2{width:6px;height:6px;margin:-3px;background:#a78bfa;box-shadow:0 0 6px #a78bfa;opacity:.7;animation:rln-o2 6s linear infinite;}
+.rl-rn-o3{width:5px;height:5px;margin:-2.5px;background:#60a5fa;box-shadow:0 0 5px #60a5fa;opacity:.55;animation:rln-o3 6s linear infinite;}
+</style>
+</head>
+<body>
+<canvas id="globe-canvas" style="position:fixed;inset:0;width:100vw;height:100vh;opacity:0.35;pointer-events:none;z-index:0;"></canvas>
+
+<!-- Pure SVG globe background -->
+<div class="globe-bg">
+  <div class="globe-wrap">
+    <svg width="520" height="520" viewBox="0 0 520 520" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <!-- outer glow -->
+        <radialGradient id="gAtm" cx="50%" cy="50%" r="50%">
+          <stop offset="70%" stop-color="#7c6af7" stop-opacity="0"/>
+          <stop offset="100%" stop-color="#7c6af7" stop-opacity="0.12"/>
+        </radialGradient>
+        <radialGradient id="gCore" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stop-color="#1a0a2e" stop-opacity="0.5"/>
+          <stop offset="100%" stop-color="#09090b" stop-opacity="0.2"/>
+        </radialGradient>
+        <clipPath id="globeClip"><circle cx="260" cy="260" r="200"/></clipPath>
+      </defs>
+
+      <!-- atmosphere -->
+      <circle cx="260" cy="260" r="215" fill="url(#gAtm)"/>
+      <!-- core fill -->
+      <circle cx="260" cy="260" r="200" fill="url(#gCore)"/>
+
+      <!-- latitude lines -->
+      <g stroke="#7c6af7" stroke-width="0.5" opacity="0.2" clip-path="url(#globeClip)">
+        <ellipse cx="260" cy="260" rx="200" ry="40"/>
+        <ellipse cx="260" cy="260" rx="200" ry="80"/>
+        <ellipse cx="260" cy="260" rx="200" ry="120"/>
+        <ellipse cx="260" cy="260" rx="200" ry="160"/>
+        <ellipse cx="260" cy="260" rx="200" ry="190"/>
+        <line x1="60" y1="260" x2="460" y2="260" stroke-width="0.5"/>
+      </g>
+
+      <!-- longitude lines — rotate group -->
+      <g clip-path="url(#globeClip)">
+        <g stroke="#7c6af7" stroke-width="0.5" opacity="0.18" style="transform-origin:260px 260px;animation:globeSpin 40s linear infinite;">
+          <ellipse cx="260" cy="260" rx="30" ry="200"/>
+          <ellipse cx="260" cy="260" rx="70" ry="200"/>
+          <ellipse cx="260" cy="260" rx="120" ry="200"/>
+          <ellipse cx="260" cy="260" rx="170" ry="200"/>
+          <ellipse cx="260" cy="260" rx="200" ry="200"/>
+        </g>
+      </g>
+
+      <!-- globe border -->
+      <circle cx="260" cy="260" r="200" stroke="#7c6af7" stroke-width="0.8" opacity="0.3" fill="none"/>
+
+      <!-- ATTACK ARCS — animated with dasharray -->
+      <!-- Moscow → NYC -->
+      <path d="M 338 178 Q 200 100 148 220" stroke="#ef4444" stroke-width="1.5" fill="none" opacity="0.8"
+            stroke-dasharray="300" stroke-dashoffset="300" style="animation:arcDraw 4s ease-in-out infinite 0s;"/>
+      <!-- Beijing → London -->
+      <path d="M 370 215 Q 320 110 230 195" stroke="#f87171" stroke-width="1.5" fill="none" opacity="0.7"
+            stroke-dasharray="250" stroke-dashoffset="250" style="animation:arcDraw2 4s ease-in-out infinite 1.2s;"/>
+      <!-- Moscow → Berlin -->
+      <path d="M 338 178 Q 290 140 255 200" stroke="#fbbf24" stroke-width="1.2" fill="none" opacity="0.7"
+            stroke-dasharray="200" stroke-dashoffset="200" style="animation:arcDraw3 3.5s ease-in-out infinite 0.6s;"/>
+      <!-- Beijing → Singapore -->
+      <path d="M 370 215 Q 390 270 360 300" stroke="#f87171" stroke-width="1.2" fill="none" opacity="0.6"
+            stroke-dasharray="180" stroke-dashoffset="180" style="animation:arcDraw3 3.5s ease-in-out infinite 2s;"/>
+      <!-- Moscow → Istanbul -->
+      <path d="M 338 178 Q 320 220 305 238" stroke="#a78bfa" stroke-width="1.2" fill="none" opacity="0.65"
+            stroke-dasharray="150" stroke-dashoffset="150" style="animation:arcDraw2 3s ease-in-out infinite 1.8s;"/>
+      <!-- Beijing → Tokyo -->
+      <path d="M 370 215 Q 400 210 408 225" stroke="#fbbf24" stroke-width="1.2" fill="none" opacity="0.65"
+            stroke-dasharray="120" stroke-dashoffset="120" style="animation:arcDraw 3s ease-in-out infinite 2.5s;"/>
+
+      <!-- CITY DOTS — targets (blue) -->
+      <!-- NYC -->
+      <circle cx="148" cy="222" fill="#60a5fa" style="animation:dotPulse 3s ease-in-out infinite 0s;"><animate attributeName="r" values="3;5;3" dur="3s" repeatCount="indefinite"/><animate attributeName="opacity" values="0.9;0.4;0.9" dur="3s" repeatCount="indefinite"/></circle>
+      <!-- London -->
+      <circle cx="230" cy="196" fill="#60a5fa" style="animation:dotPulse 3s ease-in-out infinite 0.5s;"><animate attributeName="r" values="3;5;3" dur="3s" begin="0.5s" repeatCount="indefinite"/><animate attributeName="opacity" values="0.9;0.4;0.9" dur="3s" begin="0.5s" repeatCount="indefinite"/></circle>
+      <!-- Berlin -->
+      <circle cx="255" cy="200" fill="#60a5fa"><animate attributeName="r" values="2.5;4;2.5" dur="3s" begin="1s" repeatCount="indefinite"/><animate attributeName="opacity" values="0.8;0.3;0.8" dur="3s" begin="1s" repeatCount="indefinite"/></circle>
+      <!-- Istanbul -->
+      <circle cx="305" cy="238" fill="#60a5fa"><animate attributeName="r" values="2.5;4;2.5" dur="3s" begin="1.5s" repeatCount="indefinite"/><animate attributeName="opacity" values="0.8;0.3;0.8" dur="3s" begin="1.5s" repeatCount="indefinite"/></circle>
+      <!-- Singapore -->
+      <circle cx="360" cy="300" fill="#60a5fa"><animate attributeName="r" values="2.5;4;2.5" dur="3s" begin="2s" repeatCount="indefinite"/><animate attributeName="opacity" values="0.8;0.3;0.8" dur="3s" begin="2s" repeatCount="indefinite"/></circle>
+      <!-- Tokyo -->
+      <circle cx="408" cy="227" fill="#60a5fa"><animate attributeName="r" values="2.5;4;2.5" dur="3s" begin="2.5s" repeatCount="indefinite"/><animate attributeName="opacity" values="0.8;0.3;0.8" dur="3s" begin="2.5s" repeatCount="indefinite"/></circle>
+      <!-- Mumbai -->
+      <circle cx="340" cy="268" fill="#60a5fa"><animate attributeName="r" values="2;3.5;2" dur="3s" begin="0.8s" repeatCount="indefinite"/><animate attributeName="opacity" values="0.7;0.3;0.7" dur="3s" begin="0.8s" repeatCount="indefinite"/></circle>
+
+      <!-- ATTACKER DOTS (red) -->
+      <!-- Moscow -->
+      <circle cx="338" cy="178" fill="#ef4444"><animate attributeName="r" values="4;6;4" dur="2s" repeatCount="indefinite"/><animate attributeName="opacity" values="1;0.5;1" dur="2s" repeatCount="indefinite"/></circle>
+      <!-- Beijing -->
+      <circle cx="370" cy="215" fill="#ef4444"><animate attributeName="r" values="4;6;4" dur="2s" begin="1s" repeatCount="indefinite"/><animate attributeName="opacity" values="1;0.5;1" dur="2s" begin="1s" repeatCount="indefinite"/></circle>
+
+      <!-- pulse rings on attacker dots -->
+      <circle cx="338" cy="178" fill="none" stroke="#ef4444" stroke-width="1">
+        <animate attributeName="r" values="5;16;5" dur="2.5s" repeatCount="indefinite"/>
+        <animate attributeName="opacity" values="0.8;0;0.8" dur="2.5s" repeatCount="indefinite"/>
+      </circle>
+      <circle cx="370" cy="215" fill="none" stroke="#ef4444" stroke-width="1">
+        <animate attributeName="r" values="5;16;5" dur="2.5s" begin="1.2s" repeatCount="indefinite"/>
+        <animate attributeName="opacity" values="0.8;0;0.8" dur="2.5s" begin="1.2s" repeatCount="indefinite"/>
+      </circle>
+
+    </svg>
+  </div>
+</div>
+
+<div class="page">
+
+<!-- LEFT -->
+<div class="L">
+  <div class="wm">
+    <svg width="52" height="52" viewBox="0 0 84 84" fill="none">
+      <defs>
+        <linearGradient id="g1" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#1e1b4b"/><stop offset="100%" stop-color="#0f0f1a"/></linearGradient>
+        <linearGradient id="g2" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#c4b5fd"/><stop offset="100%" stop-color="#7c3aed"/></linearGradient>
+        <linearGradient id="g3" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#a78bfa"/><stop offset="100%" stop-color="#4c1d95"/></linearGradient>
+      </defs>
+      <polygon points="42,4 78,24 78,60 42,80 6,60 6,24" fill="none" stroke="#7c3aed" stroke-width="1" opacity=".3"/>
+      <polygon points="42,9 74,27 74,57 42,75 10,57 10,27" fill="url(#g1)" stroke="url(#g3)" stroke-width="1.8"/>
+      <polygon points="42,17 66,31 66,53 42,67 18,53 18,31" fill="none" stroke="#7c3aed" stroke-width=".7" opacity=".35"/>
+      <polygon points="46,22 32,48 40,48 37,62 54,42 45,42" fill="url(#g2)"/>
+    </svg>
+    <span class="wm-name">VAJRA</span>
+    <span class="wm-v">v1.4</span>
+  </div>
+
+  <div class="hero">
+    <div class="pill">Security Reporting Platform</div>
+    <h1 class="hl">Professional reports. <span>Built for the field.</span></h1>
+    <p class="sub">From raw pentest findings to client-ready reports in minutes. Runs entirely on your infrastructure.</p>
+  </div>
+
+  <div class="caps">
+    <div class="cap cap-pt">
+      <div class="ci"><svg viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="M12 22V2"/></svg></div>
+      <div><div class="ct">Penetration Testing</div><div class="cd">OWASP WSTG v4.2 · CVSS v3.1</div></div>
+    </div>
+    <div class="cap cap-rt">
+      <div class="ci"><svg viewBox="0 0 24 24"><polyline points="14.5 17.5 3 6 3 3 6 3 17.5 14.5"/><line x1="13" x2="19" y1="19" y2="13"/><line x1="16" x2="20" y1="16" y2="20"/><line x1="19" x2="21" y1="21" y2="19"/><polyline points="14.5 6.5 18 3 21 3 21 6 17.5 9.5"/><line x1="5" x2="9" y1="14" y2="18"/><line x1="7" x2="4" y1="17" y2="20"/><line x1="3" x2="5" y1="19" y2="21"/></svg></div>
+      <div><div class="ct">Red Team Ops</div><div class="cd">MITRE ATT&amp;CK v14 · TIBER-EU</div></div>
+    </div>
+    <div class="cap cap-ph">
+      <div class="ci"><svg viewBox="0 0 24 24"><path d="M4 6a2 2 0 0 0-2 2v4a5 5 0 0 0 5 5 8 8 0 0 1 5 2 8 8 0 0 1 5-2 5 5 0 0 0 5-5V8a2 2 0 0 0-2-2h-3a8 8 0 0 0-5 2 8 8 0 0 0-5-2z"/><path d="M18 11c-1.5 0-2.5.5-3 2"/><path d="M6 11c1.5 0 2.5.5 3 2"/></svg></div>
+      <div><div class="ct">Phishing Campaigns</div><div class="cd">AiTM · MFA bypass · Awareness</div></div>
+    </div>
+    <div class="cap cap-cm">
+      <div class="ci"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg></div>
+      <div><div class="ct">Compliance Mapping</div><div class="cd">GDPR · PCI DSS v4.0 · ISO 27001</div></div>
+    </div>
+  </div>
+
+  <div class="stats">
+    <div class="stat"><div class="sn">14</div><div><div class="sl">KB Files</div><div class="ss">Auto-loaded</div></div></div>
+    <div class="stat"><div class="sn">3</div><div><div class="sl">Templates</div><div class="ss">PT · RT · Phish</div></div></div>
+    <div class="stat">
+      <div class="ai-chip"><div class="aci"><span>AI</span><div class="adi"><i></i><i></i><i></i></div></div></div>
+      <div><div class="sl">Powered</div><div class="ss">Runs locally</div></div>
+    </div>
+  </div>
+
+  <div style="display:flex;flex-direction:row;border:1px solid rgba(255,255,255,.06);border-radius:7px;overflow:hidden;flex-shrink:0;margin-top:auto;max-width:580px;">
+    <div class="ci2">CREST</div><div class="ci2">PTES</div><div class="ci2">NIST</div>
+    <div class="ci2">OWASP</div><div class="ci2">CWE</div><div class="ci2">CVSS</div>
+  </div>
+</div>
+
+<!-- RIGHT -->
+<div class="R">
+  <div class="r-logo-wrap">
+    <div class="rl-scene-new">
+      <!-- outer ring CW -->
+      <svg class="rl-rn-outer" width="180" height="180" viewBox="0 0 180 180" fill="none" style="position:absolute;inset:0;">
+        <circle cx="90" cy="90" r="84" stroke="#7c6af7" stroke-width="1" stroke-dasharray="5 7" opacity=".45"/>
+        <circle cx="90" cy="90" r="74" stroke="#4c1d95" stroke-width=".6" stroke-dasharray="2 10" opacity=".28"/>
+      </svg>
+      <!-- inner ring CCW -->
+      <svg class="rl-rn-inner" width="130" height="130" viewBox="0 0 130 130" fill="none" style="position:absolute;top:25px;left:25px;">
+        <circle cx="65" cy="65" r="60" stroke="#a78bfa" stroke-width=".7" stroke-dasharray="3 9" opacity=".22"/>
+      </svg>
+      <!-- orbit dots -->
+      <div class="rl-rn-o1"></div>
+      <div class="rl-rn-o2"></div>
+      <div class="rl-rn-o3"></div>
+      <!-- hex logo -->
+      <svg class="rl-rn-hex" width="100" height="100" viewBox="0 0 84 84" fill="none" style="position:relative;z-index:1;">
+        <defs>
+          <linearGradient id="rnl1" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#1e1b4b"/><stop offset="100%" stop-color="#0f0f1a"/></linearGradient>
+          <linearGradient id="rnl2" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#c4b5fd"/><stop offset="100%" stop-color="#7c3aed"/></linearGradient>
+          <linearGradient id="rnl3" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#a78bfa"/><stop offset="100%" stop-color="#4c1d95"/></linearGradient>
+          <filter id="rnhglow"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+        </defs>
+        <g filter="url(#rnhglow)">
+          <polygon points="42,4 78,24 78,60 42,80 6,60 6,24" fill="none" stroke="#7c3aed" stroke-width="1.5" opacity=".5"/>
+          <polygon points="42,9 74,27 74,57 42,75 10,57 10,27" fill="url(#rnl1)" stroke="url(#rnl3)" stroke-width="2"/>
+          <polygon points="42,17 66,31 66,53 42,67 18,53 18,31" fill="none" stroke="#7c3aed" stroke-width=".8" opacity=".4"/>
+          <polygon points="46,22 32,48 40,48 37,62 54,42 45,42" fill="url(#rnl2)"/>
+        </g>
+      </svg>
+    </div>
+  </div>
+
+  <div class="fey">Workspace Login</div>
+  <div class="fh">Welcome back</div>
+  <div class="fp">Sign in to continue to VAJRA</div>
+
+  <div class="err" id="errBox">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/></svg>
+    <span id="errMsg"></span>
+  </div>
+
+  <div class="fld">
+    <label>Username</label>
+    <div class="iw">
+      <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      <input type="text" id="user" placeholder="Enter your username" autocomplete="username">
+    </div>
+  </div>
+  <div class="fld">
+    <label>Password</label>
+    <div class="iw">
+      <svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+      <input type="password" id="pass" placeholder="Enter your password" autocomplete="current-password">
+    </div>
+  </div>
+
+  <button class="btn" id="btn" onclick="doLogin()">
+    <div class="spin"></div><span class="lbl">Sign in</span><span class="arr">→</span>
+  </button>
+
+  <div class="dv"><div class="dl"></div><span class="dt">All access is logged and monitored</span><div class="dl"></div></div>
+  <div class="fn">Vulnerability Analysis, Judgement &amp; Reporting Arsenal</div>
+  <div class="rf">VAJRA v1.4 · Authorised personnel only</div>
+</div>
+
+</div>
+<script>
+document.addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
+async function doLogin(){
+  const btn=document.getElementById('btn');
+  const user=document.getElementById('user').value.trim();
+  const pass=document.getElementById('pass').value;
+  if(!user||!pass){showErr('Please enter username and password.');return;}
+  btn.disabled=true;btn.classList.add('busy');
+  document.getElementById('errBox').style.display='none';
+  try{
+    const r=await fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:user,password:pass})});
+    const d=await r.json();
+    if(d.success)window.location.href='/';
+    else showErr(d.error||'Invalid username or password.');
+  }catch(e){showErr('Connection error — please try again.');}
+  btn.disabled=false;btn.classList.remove('busy');
+}
+function showErr(msg){document.getElementById('errMsg').textContent=msg;document.getElementById('errBox').style.display='flex';}
+</script>
+
+
+
+</body>
+</html>
