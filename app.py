@@ -52,7 +52,7 @@ for d in [REPORTS_DIR, KNOWLEDGE_DIR, TEMPLATES_DIR, LOGOS_DIR, DB_PATH.parent]:
 
 # ── Brute force protection ────────────────────────────────────────────────────
 _failed_attempts = {}   # key (ip or username) -> [timestamp, ...]
-_LOCKOUT_MAX     = 10   # max attempts per key
+_LOCKOUT_MAX     = 10   # max login attempts before lockout
 _LOCKOUT_WINDOW  = 300  # seconds (5 min)
 
 def _check_rate_limit(key):
@@ -65,6 +65,22 @@ def _check_rate_limit(key):
 def _record_failed(key):
     now = datetime.now().timestamp()
     _failed_attempts.setdefault(key, []).append(now)
+
+# ── Generation rate limiter — separate from brute-force dict ─────────────────
+# Status checks and logins do NOT count against this limit.
+_gen_attempts    = {}   # username -> [timestamp, ...]
+_GEN_RATE_MAX    = 20   # reports per window (raised from 10 — status ping was eating it)
+_GEN_RATE_WINDOW = 300  # 5 minutes
+
+def _check_gen_limit(username):
+    now = datetime.now().timestamp()
+    attempts = [t for t in _gen_attempts.get(username, []) if now - t < _GEN_RATE_WINDOW]
+    _gen_attempts[username] = attempts
+    return len(attempts) >= _GEN_RATE_MAX
+
+def _record_gen(username):
+    now = datetime.now().timestamp()
+    _gen_attempts.setdefault(username, []).append(now)
 
 def _clear_failed(key):
     _failed_attempts.pop(key, None)
@@ -1145,7 +1161,7 @@ Conducted under authorisation from {client}. No malicious payloads deployed. CON
 # directly via raw HTTP calls (no openai SDK needed).
 #
 # Only two providers need an optional extra package:
-#   gemini  → pip3 install google-generativeai   (Google's SDK has no REST alternative)
+#   gemini  → pip3 install google-genai   (Google's new official SDK)
 #   mistral → pip3 install mistralai             (streaming-first SDK, REST is awkward)
 #   cohere  → pip3 install cohere                (proprietary request format)
 #
@@ -1285,29 +1301,34 @@ def _call_provider(provider: str, api_key: str, base_url: str, model: str,
                                       max_tokens, skip_ssl)
 
     # ── Google Gemini ─────────────────────────────────────────────────────────
-    # Google's SDK is required — their REST API needs an API-key query param
-    # and a different request/response shape not worth reimplementing manually.
-    # Install: pip3 install google-generativeai --break-system-packages
+    # Google Gemini — uses the new google-genai SDK.
+    # Install: pip3 install google-genai --break-system-packages
     elif p == "gemini":
         try:
-            import google.generativeai as genai
+            from google import genai as _google_genai
         except ImportError:
             raise ValueError(
-                "AI_PROVIDER=gemini needs one extra package (Google's own SDK):\n"
-                "  pip3 install google-generativeai --break-system-packages\n"
+                "AI_PROVIDER=gemini needs one extra package:\n"
+                "  pip3 install google-genai --break-system-packages\n"
                 "All other providers work without any extra install."
             )
-        genai.configure(api_key=api_key)
-        _mdl = genai.GenerativeModel(
-            model_name=model or "gemini-1.5-pro",
-            system_instruction=system_prompt,
+        _gclient = _google_genai.Client(
+            api_key=api_key,
+            http_options=_google_genai.types.HttpOptions(api_version="v1"),
         )
-        response = _mdl.generate_content(
-            user_prompt,
-            generation_config=genai.GenerationConfig(max_output_tokens=max_tokens),
+        _gmodel = model or "gemini-2.0-flash-lite"
+        # Ensure model name has models/ prefix
+        if not _gmodel.startswith("models/"):
+            _gmodel = f"models/{_gmodel}"
+        _gresp = _gclient.models.generate_content(
+            model=_gmodel,
+            contents=user_prompt,
+            config=_google_genai.types.GenerateContentConfig(
+                system_instruction=system_prompt,
+                max_output_tokens=max_tokens,
+            ),
         )
-        return response.text
-
+        return _gresp.text
     # ── OpenAI-compatible (ChatGPT, Grok, Groq, Together, Ollama, Mistral,
     #    Cohere, DeepSeek, OpenRouter, Perplexity, Azure, LM Studio, vLLM …)
     # Pure httpx — no extra packages needed.
@@ -1361,9 +1382,13 @@ def generate_report(report_type, client, tester, scope, date, findings_text, tem
 
     if not api_key:
         raise ValueError("AI_API_KEY not set in .env file")
-    if not base_url:
+
+    # Providers with built-in default URLs — AI_BASE_URL is optional for these
+    _providers_with_default = set(_OPENAI_COMPAT_URLS.keys()) | {"anthropic", "claude", "gemini"}
+    if provider not in _providers_with_default and not base_url:
         raise ValueError(
-            "AI_BASE_URL not set in .env\n"
+            f"AI_BASE_URL not set in .env\n"
+            f"Required for provider '{provider}'.\n"
             "Examples:\n"
             "  Anthropic:  AI_BASE_URL=https://api.anthropic.com\n"
             "  OpenAI:     AI_BASE_URL=https://api.openai.com/v1\n"
@@ -1371,13 +1396,14 @@ def generate_report(report_type, client, tester, scope, date, findings_text, tem
             "  Proxy:      AI_BASE_URL=https://your-gateway.example.com"
         )
 
-    if not base_url.startswith(("http://", "https://")):
-        base_url = "https://" + base_url
-
-    base_url = base_url.rstrip("/")
+    # Only process base_url if it was actually set
+    if base_url:
+        if not base_url.startswith(("http://", "https://")):
+            base_url = "https://" + base_url
+        base_url = base_url.rstrip("/")
 
     print(f"[INFO] Provider: {provider}")
-    print(f"[INFO] Endpoint: {base_url}")
+    print(f"[INFO] Endpoint: {base_url or '(using provider default)'}")
     print(f"[INFO] Model:    {model}")
     print(f"[INFO] SSL:      {'skip' if skip_ssl else 'verify'}")
 
@@ -1930,9 +1956,10 @@ def generate_report_chunked(job_id, report_type, client, tester, scope, date,
             "skip_ssl": os.environ.get("SKIP_SSL_VERIFY", "false").lower() == "true",
             "provider": os.environ.get("AI_PROVIDER", "anthropic").strip().lower(),
         }
-        if not api_cfg["base_url"].startswith(("http://", "https://")):
-            api_cfg["base_url"] = "https://" + api_cfg["base_url"]
-        api_cfg["base_url"] = api_cfg["base_url"].rstrip("/")
+        if api_cfg["base_url"]:
+            if not api_cfg["base_url"].startswith(("http://", "https://")):
+                api_cfg["base_url"] = "https://" + api_cfg["base_url"]
+            api_cfg["base_url"] = api_cfg["base_url"].rstrip("/")
 
         knowledge = load_knowledge_base(
             report_type=report_type,
@@ -2391,40 +2418,160 @@ def index():
                            kb_files=kb_files)
 
 
+# ── AI connection cache — avoids burning free-tier quota on every page refresh ──
+_ai_conn_cache = {"connected": None, "error": None, "cfg_hash": None, "tested_at": 0}
+_AI_CONN_TTL   = 300   # seconds between re-tests (5 min)
+
+
 @app.route("/api/status")
 @login_required
 def api_status():
-    api_key  = os.environ.get("AI_API_KEY", "")
+    api_key  = os.environ.get("AI_API_KEY", "").strip()
     base_url = os.environ.get("AI_BASE_URL", "").strip()
-    model    = os.environ.get("AI_MODEL", "claude-sonnet-4-6")
-    provider = os.environ.get("AI_PROVIDER", "anthropic")
+    model    = os.environ.get("AI_MODEL", "claude-sonnet-4-6").strip()
+    provider = os.environ.get("AI_PROVIDER", "anthropic").strip().lower()
     skip_ssl = os.environ.get("SKIP_SSL_VERIFY", "false")
+
     kb   = len(glob.glob(str(KNOWLEDGE_DIR / "*.md"))) + len(glob.glob(str(KNOWLEDGE_DIR / "*.txt")))
     tmpl = len([f for f in TEMPLATES_DIR.iterdir() if f.suffix in [".docx", ".md", ".html"]])
     with get_db() as conn:
         rpts = conn.execute("SELECT COUNT(*) FROM reports").fetchone()[0]
-    ready = bool(api_key and base_url)
-    # Check logos
+
+    # ── Bug fix 1: providers with built-in default URLs don't need AI_BASE_URL ──
+    # Only flag "not configured" if the key is missing, not the URL.
+    # Providers that have a default URL in _OPENAI_COMPAT_URLS or use their own SDK
+    # are ready as long as the API key is set.
+    providers_with_default_url = set(_OPENAI_COMPAT_URLS.keys()) | {"anthropic", "claude", "gemini"}
+    if provider in providers_with_default_url:
+        configured = bool(api_key)          # URL is optional — has a default
+    else:
+        configured = bool(api_key and base_url)  # Custom/unknown — URL required
+
+    # ── Real connection test — cached to avoid burning free-tier quota ──
+    # Only re-tests when: config changes, cache expires (5 min), or first load.
+    import time as _time
+    import hashlib as _hashlib
+    _cfg_hash = _hashlib.md5(f"{api_key}{provider}{model}{base_url}".encode()).hexdigest()
+    _now      = _time.time()
+    _cache    = _ai_conn_cache
+
+    # Use cached result if config unchanged and not expired
+    if (_cache["cfg_hash"] == _cfg_hash and
+            _cache["connected"] is not None and
+            (_now - _cache["tested_at"]) < _AI_CONN_TTL):
+        ai_connected = _cache["connected"]
+        ai_error     = _cache["error"]
+    else:
+        ai_connected = False
+        ai_error = None
+        if configured:
+            try:
+                import httpx as _httpx
+                _ping_url  = base_url or _OPENAI_COMPAT_URLS.get(provider, "")
+                _skip      = skip_ssl.lower() == "true"
+                _timeout   = _httpx.Timeout(connect=8.0, read=15.0, write=8.0, pool=5.0)
+
+                if provider == "gemini":
+                    # Gemini ping using new google-genai SDK
+                    try:
+                        from google import genai as _gg
+                        _gc = _gg.Client(
+                            api_key=api_key,
+                            http_options=_gg.types.HttpOptions(api_version="v1"),
+                        )
+                        _gm = model or "gemini-2.0-flash-lite"
+                        if not _gm.startswith("models/"):
+                            _gm = f"models/{_gm}"
+                        _gr = _gc.models.generate_content(
+                            model=_gm,
+                            contents="Reply with the single word: ok",
+                            config=_gg.types.GenerateContentConfig(max_output_tokens=5),
+                        )
+                        ai_connected = bool(_gr.text)
+                    except ImportError:
+                        ai_error = "google-genai package not installed. Run: pip3 install google-genai --break-system-packages"
+                    except Exception as _e:
+                        ai_error = str(_e)[:200]
+
+                elif provider in ("anthropic", "claude") or (provider not in _OPENAI_COMPAT_URLS and not _ping_url):
+                    # Anthropic SDK ping
+                    import anthropic as _anthropic
+                    _http = _httpx.Client(verify=not _skip, timeout=_timeout)
+                    _ac = _anthropic.Anthropic(
+                        api_key=api_key,
+                        base_url=(base_url or "https://api.anthropic.com"),
+                        http_client=_http,
+                    )
+                    _msg = _ac.messages.create(
+                        model=model, max_tokens=5,
+                        messages=[{"role": "user", "content": "Reply with the single word: ok"}]
+                    )
+                    ai_connected = bool(_msg.content)
+
+                else:
+                    # OpenAI-compatible ping via raw httpx
+                    _base = (base_url or _ping_url).rstrip("/")
+                    _url  = _base + "/chat/completions"
+                    _hdrs = {
+                        "Content-Type":  "application/json",
+                        "Authorization": f"Bearer {api_key}",
+                    }
+                    if provider == "openrouter":
+                        _hdrs["HTTP-Referer"] = "https://github.com/Mah3Sec/VAJRA"
+                        _hdrs["X-Title"] = "VAJRA"
+                    _payload = {
+                        "model": model,
+                        "max_tokens": 5,
+                        "messages": [{"role": "user", "content": "Reply with the single word: ok"}],
+                    }
+                    with _httpx.Client(verify=not _skip, timeout=_timeout) as _http:
+                        _resp = _http.post(_url, headers=_hdrs, json=_payload)
+                    if _resp.status_code == 200:
+                        ai_connected = True
+                    elif _resp.status_code == 401:
+                        ai_error = "Invalid API key — check AI_API_KEY in .env"
+                    elif _resp.status_code == 403:
+                        ai_error = f"Access denied — your key may not have access to model '{model}'"
+                    elif _resp.status_code == 404:
+                        ai_error = f"Endpoint not found — check AI_BASE_URL in .env ({_base})"
+                    else:
+                        try:
+                            _err = _resp.json().get("error", {})
+                            ai_error = _err.get("message", _resp.text[:200]) if isinstance(_err, dict) else str(_err)[:200]
+                        except Exception:
+                            ai_error = f"HTTP {_resp.status_code}: {_resp.text[:200]}"
+
+            except Exception as _e:
+                ai_error = str(_e)[:200]
+        # Save result to cache
+        _ai_conn_cache["connected"]  = ai_connected
+        _ai_conn_cache["error"]      = ai_error
+        _ai_conn_cache["cfg_hash"]   = _cfg_hash
+        _ai_conn_cache["tested_at"]  = _now
+
+    # ── Check logos ──
     comp_logo_ok = any(
         f.stem.startswith("company_logo") and f.stat().st_size > 100
-        for f in LOGOS_DIR.iterdir() if f.suffix.lower() in [".png",".jpg",".jpeg",".webp"]
+        for f in LOGOS_DIR.iterdir() if f.suffix.lower() in [".png", ".jpg", ".jpeg", ".webp"]
     ) if LOGOS_DIR.exists() else False
     test_logo_ok = any(
         f.stem.startswith("tester_logo") and f.stat().st_size > 100
-        for f in LOGOS_DIR.iterdir() if f.suffix.lower() in [".png",".jpg",".jpeg",".webp"]
+        for f in LOGOS_DIR.iterdir() if f.suffix.lower() in [".png", ".jpg", ".jpeg", ".webp"]
     ) if LOGOS_DIR.exists() else False
 
     return jsonify({
         "api_key_set":  bool(api_key),
-        "base_url":     base_url or "⚠ NOT SET",
+        "base_url":     base_url or "(using provider default)",
         "model":        model,
         "provider":     provider,
         "skip_ssl":     skip_ssl,
+        "configured":   configured,
+        "ai_connected": ai_connected,
+        "ai_error":     ai_error,
         "kb_files":     kb,
         "templates":    tmpl,
         "reports":      rpts,
-        "ready":        ready,
-        "ai_connected": ready,
+        "ready":        ai_connected,
         "company_logo": comp_logo_ok,
         "tester_logo":  test_logo_ok,
     })
@@ -2529,11 +2676,11 @@ def list_logos():
 def generate():
     if session.get("role") == "viewer":
         return jsonify({"error": "Viewer role cannot generate reports. Contact admin."}), 403
-    # Rate limit generation — max 10 per hour per user
-    gen_key = f"gen:{session.get('username','unknown')}"
-    if _check_rate_limit(gen_key):
-        return jsonify({"error": "Generation rate limit reached. Maximum 10 reports per 5 minutes."}), 429
-    _record_failed(gen_key)  # counts towards limit
+    # Rate limit generation — uses its own counter, NOT the login brute-force dict
+    _gen_user = session.get("username", "unknown")
+    if _check_gen_limit(_gen_user):
+        return jsonify({"error": f"Generation rate limit reached. Maximum {_GEN_RATE_MAX} reports per 5 minutes."}), 429
+    _record_gen(_gen_user)
     data = request.json or {}
     report_type  = data.get("report_type", "pentest")
     client       = data.get("client", "")
@@ -3160,13 +3307,15 @@ if __name__ == "__main__":
     print(f"  URL:       http://localhost:5000")
     print(f"  Provider:  {provider}")
     print(f"  API Key:   {'SET ✓' if api_key else '⚠ NOT SET'}")
-    print(f"  Endpoint:  {base_url if base_url else '⚠ NOT SET — add AI_BASE_URL to .env'}")
+    _has_default_url = provider.lower() in (set(_OPENAI_COMPAT_URLS.keys()) | {"anthropic", "claude", "gemini"})
+    print(f"  Endpoint:  {base_url if base_url else '(using provider default)' if _has_default_url else '⚠ NOT SET — add AI_BASE_URL to .env'}")
     print(f"  Model:     {model}")
     print(f"  Reports:   {REPORTS_DIR}")
     print(f"  Knowledge: {KNOWLEDGE_DIR}")
     print("=" * 55)
-    if not api_key or not base_url:
-        print("\n  ⚠  Edit .env and set AI_API_KEY, AI_BASE_URL, and AI_PROVIDER\n")
+    _url_ok = bool(base_url) or _has_default_url
+    if not api_key or not _url_ok:
+        print("\n  ⚠  Edit .env and set AI_API_KEY and AI_PROVIDER\n")
     if not os.environ.get("SECRET_KEY"):
         print("  [WARN] SECRET_KEY not set in .env — sessions will reset on restart!")
         print("  [WARN] Add: SECRET_KEY=your-random-32-char-string\n")
